@@ -99,8 +99,8 @@ class Title(models.Model):
     )
 
     class Meta:
-        verbose_name = 'композиция'
-        verbose_name_plural = 'Композиции'
+        verbose_name = 'произведение'
+        verbose_name_plural = 'Произведения'
         ordering = ['-pub_date']
 
     def __str__(self):
@@ -108,18 +108,28 @@ class Title(models.Model):
 
 
 class Review(models.Model):
-    text = models.TextField(verbose_name='Текст обзора')
-    title = models.ForeignKey(
+    title_id = models.ForeignKey(
         Title,
         on_delete=models.CASCADE,
         related_name='reviews',
-        verbose_name='Пост'
+        verbose_name='ID_Произведения'
     )
-    created_at = models.DateTimeField(auto_now_add=True,
-                                      verbose_name='Создан')
-    author = models.ForeignKey(User, on_delete=models.CASCADE,
-                               verbose_name='Автор',
-                               related_name='reviews')
+    text = models.TextField(
+        verbose_name='Текст обзора',
+        blank=False
+    )
+    author = models.ForeignKey(
+        User, on_delete=models.CASCADE,
+        verbose_name='Автор',
+        related_name='reviews'
+    )
+    score = models.IntegerField(
+        verbose_name='Оценка'
+    )
+    pub_date = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name='Создан'
+    )
 
     class Meta:
         ordering = ('created_at',)
@@ -132,14 +142,14 @@ class Review(models.Model):
 
 class Comment(models.Model):
     text = models.TextField(verbose_name='Текст комментария')
-    review = models.ForeignKey(
+    review_id = models.ForeignKey(
         Review,
         on_delete=models.CASCADE,
         related_name='commentaries',
-        verbose_name='Пост'
+        verbose_name='ID_Комментария'
     )
-    created_at = models.DateTimeField(auto_now_add=True,
-                                      verbose_name='Создан')
+    pub_date = models.DateTimeField(auto_now_add=True,
+                                    verbose_name='Создан')
     author = models.ForeignKey(User, on_delete=models.CASCADE,
                                verbose_name='Автор',
                                related_name='commentaries')
