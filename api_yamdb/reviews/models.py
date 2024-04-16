@@ -1,4 +1,7 @@
+from datetime import datetime as dt
+
 from django.contrib.auth import get_user_model
+from django.core.exceptions import ValidationError
 from django.core.validators import RegexValidator
 from django.db import models
 
@@ -85,14 +88,13 @@ class Title(models.Model):
     )
     genre = models.ManyToManyField(
         Genre,
-        on_delete=models.SET_NULL,
         blank=False,
         verbose_name='Жанр',
         related_name='titles'
     )
     category = models.ForeignKey(
         Category,
-        on_delete=models.SET_NULL,
+        on_delete=models.DO_NOTHING,
         blank=False,
         verbose_name='Категория',
         related_name='titles'
@@ -101,14 +103,28 @@ class Title(models.Model):
     class Meta:
         verbose_name = 'произведение'
         verbose_name_plural = 'Произведения'
-        ordering = ['-pub_date']
+
+    def clean(self):
+        super().clean()
+        if self.year < 0:
+            raise ValidationError(
+                {'year': 'Год не может быть отрицательным числом!'}
+            )
+        elif self.year > dt.now().year:
+            raise ValidationError(
+                {'year': 'Год не может быть больше текущего!'}
+            )
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return self.name
 
 
 class Review(models.Model):
-    title_id = models.ForeignKey(
+    title = models.ForeignKey(
         Title,
         on_delete=models.CASCADE,
         related_name='reviews',
@@ -132,7 +148,6 @@ class Review(models.Model):
     )
 
     class Meta:
-        ordering = ('created_at',)
         verbose_name = 'обзор'
         verbose_name_plural = 'Обзоры'
 
@@ -142,7 +157,7 @@ class Review(models.Model):
 
 class Comment(models.Model):
     text = models.TextField(verbose_name='Текст комментария')
-    review_id = models.ForeignKey(
+    review = models.ForeignKey(
         Review,
         on_delete=models.CASCADE,
         related_name='commentaries',
@@ -155,7 +170,6 @@ class Comment(models.Model):
                                related_name='commentaries')
 
     class Meta:
-        ordering = ('created_at',)
         verbose_name = 'комментарий'
         verbose_name_plural = 'Комментарии'
 
