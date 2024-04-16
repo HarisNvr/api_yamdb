@@ -120,11 +120,11 @@ class Title(models.Model):
         super().clean()
         if self.year < 0:
             raise ValidationError(
-                {'year': 'Год не может быть отрицательным числом!'}
+                {'year': 'Год создания не может быть отрицательным числом!'}
             )
         elif self.year > dt.now().year:
             raise ValidationError(
-                {'year': 'Год не может быть больше текущего!'}
+                {'year': 'Год создания не может быть больше текущего!'}
             )
 
     def save(self, *args, **kwargs):
