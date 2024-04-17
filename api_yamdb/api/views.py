@@ -4,15 +4,16 @@ import string
 from django.contrib.auth import authenticate
 from django.contrib.auth import get_user_model
 from django.core.mail import send_mail
-from rest_framework import viewsets, status
+from rest_framework import viewsets, status, filters
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.pagination import LimitOffsetPagination
 
-from .serializers import CustomUserCreateSerializer, TitleSerializer
-from .permission import IsAuthorModerAdminOrReadOnly, IsAdmin
-from .viewsets import CreateListViewSet
+from .serializers import (CustomUserCreateSerializer, TitleSerializer,
+                          GenreSerializer, CategorySerializer)
+from .permission import IsAdminOrReadOnly
+from .viewsets import CreateDestroyListViewSet
 from reviews.models import Title, Category, Genre
 
 User = get_user_model()
@@ -62,25 +63,40 @@ class TokenObtainView(APIView):
         return Response({"token": token}, status=status.HTTP_200_OK)
 
 
-class TitleViewSet(CreateListViewSet):
+class TitleViewSet(viewsets.ModelViewSet):
     queryset = Title.objects.all()
     serializer_class = TitleSerializer
     pagination_class = LimitOffsetPagination
-    permission_classes = (IsAuthorModerAdminOrReadOnly,)
+    permission_classes = (IsAdminOrReadOnly,)
+    filter_backends = (filters.SearchFilter,)
+    search_fields = ('name',)
 
-    def perform_create(self, serializer):
-        serializer.save(author=self.request.user)
 
-
-class CategoryViewSet(CreateListViewSet):
+class CategoryViewSet(CreateDestroyListViewSet):
     queryset = Category.objects.all()
-    serializer_class = TitleSerializer
+    serializer_class = CategorySerializer
     pagination_class = LimitOffsetPagination
-    permission_classes = (IsAdmin,)
+    permission_classes = (IsAdminOrReadOnly,)
+    filter_backends = (filters.SearchFilter,)
+    search_fields = ('name',)
+    lookup_field = 'slug'
+
+    def perform_destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        super(CategoryViewSet, self).perform_destroy(instance)
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-class GenreViewSet(CreateListViewSet):
+class GenreViewSet(CreateDestroyListViewSet):
     queryset = Genre.objects.all()
-    serializer_class = TitleSerializer
+    serializer_class = GenreSerializer
     pagination_class = LimitOffsetPagination
-    permission_classes = (IsAdmin,)
+    permission_classes = (IsAdminOrReadOnly,)
+    filter_backends = (filters.SearchFilter,)
+    search_fields = ('name',)
+    lookup_field = 'slug'
+
+    def perform_destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        super(GenreViewSet, self).perform_destroy(instance)
+        return Response(status=status.HTTP_204_NO_CONTENT)

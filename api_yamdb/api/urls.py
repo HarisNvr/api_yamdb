@@ -10,6 +10,12 @@ router_v1.register('categories', CategoryViewSet, basename='categories')
 router_v1.register('genres', GenreViewSet, basename='genres')
 
 urlpatterns = [
+    path('v1/categories/<slug:slug>/',
+         CategoryViewSet.as_view({'delete': 'perform_destroy'}),
+         name='category-destroy'),
+    path('v1/genres/<slug:slug>/',
+         GenreViewSet.as_view({'delete': 'perform_destroy'}),
+         name='genre-destroy'),
     path('v1/', include(router_v1.urls)),
     path('v1/auth/token/', TokenObtainView.as_view(), name='token_obtain'),
     path('v1/', include('djoser.urls.base')),

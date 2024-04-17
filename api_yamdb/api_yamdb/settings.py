@@ -57,6 +57,9 @@ REST_FRAMEWORK = {
         'user_minute': '60/min',
         'anon_minute': '10/min',
     },
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination'
+                                '.PageNumberPagination',
+    'PAGE_SIZE': 10,
 }
 
 SIMPLE_JWT = {

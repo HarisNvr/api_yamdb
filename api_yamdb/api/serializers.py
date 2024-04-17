@@ -1,10 +1,11 @@
-from datetime import timezone
+from datetime import datetime as dt
 
 from django.contrib.auth import get_user_model
+from django.core.validators import RegexValidator
 from djoser.serializers import UserCreateSerializer, UserSerializer
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
-from rest_framework.validators import UniqueTogetherValidator
+from rest_framework.validators import UniqueTogetherValidator, UniqueValidator
 
 from reviews.models import Category, Genre, Review, Comment, Title
 
@@ -29,45 +30,39 @@ class CustomUserCreateSerializer(UserSerializer):
 
 
 class CategorySerializer(serializers.ModelSerializer):
-    name = serializers.SlugRelatedField(
-        read_only=True,
-        slug_field='name'
-    )
-    slug = serializers.SlugRelatedField(
-        slug_field='slug',
-        queryset=Category.objects.all()
-    )
+    name = serializers.CharField(max_length=256)
+    slug = serializers.CharField(max_length=16, validators=[
+        RegexValidator(
+            regex=r'^[-a-zA-Z0-9_]+$',
+            message='Слаг может содержать только латинские '
+                    'буквы, цифры, дефисы и знаки подчеркивания.'
+        ),
+        UniqueValidator(
+            queryset=Category.objects.all()
+        )
+    ])
 
     class Meta:
         model = Category
         fields = ('name', 'slug')
-        validators = [
-            UniqueTogetherValidator(
-                queryset=model.objects.all(),
-                fields=('name', 'slug'),
-                message='Категория с таким слагом уже существует.')
-        ]
 
 
 class GenreSerializer(serializers.ModelSerializer):
-    name = serializers.SlugRelatedField(
-        read_only=True,
-        slug_field='name'
-    )
-    slug = serializers.SlugRelatedField(
-        slug_field='slug',
-        queryset=Category.objects.all()
-    )
+    name = serializers.CharField(max_length=256)
+    slug = serializers.CharField(max_length=16, validators=[
+        RegexValidator(
+            regex=r'^[-a-zA-Z0-9_]+$',
+            message='Слаг может содержать только латинские '
+                    'буквы, цифры, дефисы и знаки подчеркивания.'
+        ),
+        UniqueValidator(
+            queryset=Genre.objects.all()
+        )
+    ])
 
     class Meta:
         model = Genre
         fields = ('name', 'slug')
-        validators = [
-            UniqueTogetherValidator(
-                queryset=model.objects.all(),
-                fields=('name', 'slug'),
-                message='Жанр с таким слагом уже существует.')
-        ]
 
 
 class TitleSerializer(serializers.ModelSerializer):
@@ -77,22 +72,21 @@ class TitleSerializer(serializers.ModelSerializer):
     description = serializers.CharField(max_length=512)
     genre = serializers.SerializerMethodField()
     category = serializers.SlugRelatedField(
-        read_only=True,
-        slug_field='name'
+        queryset=Category.objects.all(),
+        slug_field='slug'
     )
 
     class Meta:
         model = Title
         fields = ('id', 'name', 'year', 'rating',
                   'description', 'genre', 'category')
-        read_only_fields = ('post',)
 
     def get_genre(self, obj):
         genres = obj.genre.all()
         return [{'name': genre.name, 'slug': genre.slug} for genre in genres]
 
     def validate_year(self, value):
-        current_year = timezone.now().year
+        current_year = dt.now().year
         if value <= 0:
             raise serializers.ValidationError(
                 'Год создания не может быть отрицательным числом!'

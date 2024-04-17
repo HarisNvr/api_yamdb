@@ -5,8 +5,17 @@ from .permission import IsAuthorModerAdminOrReadOnly
 from djoser.views import UserViewSet
 
 
-class CreateListViewSet(mixins.CreateModelMixin, mixins.ListModelMixin,
-                        viewsets.GenericViewSet):
+class CreateDestroyListViewSet(
+    mixins.CreateModelMixin, mixins.ListModelMixin,
+    mixins.DestroyModelMixin, viewsets.GenericViewSet
+):
+    pass
+
+
+class RetrieveCreateDestroyListViewSet(
+    mixins.RetrieveModelMixin, mixins.CreateModelMixin, mixins.ListModelMixin,
+    mixins.DestroyModelMixin, viewsets.GenericViewSet
+):
     pass
 
 

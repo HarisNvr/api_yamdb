@@ -127,9 +127,6 @@ class Title(models.Model):
         else:
             return None
 
-    def __str__(self):
-        return self.name
-
     def clean(self):
         super().clean()
         if self.year < 0:
@@ -140,6 +137,9 @@ class Title(models.Model):
             raise ValidationError(
                 {'year': 'Год создания не может быть больше текущего!'}
             )
+
+    def __str__(self):
+        return self.name
 
     def save(self, *args, **kwargs):
         self.full_clean()
