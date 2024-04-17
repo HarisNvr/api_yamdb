@@ -1,12 +1,26 @@
 from datetime import datetime as dt
 
-from django.contrib.auth import get_user_model
+from django.contrib.auth.models import AbstractUser
 from django.core.exceptions import ValidationError
 from django.core.validators import RegexValidator
 from django.db import models
 
-User = get_user_model()
 MX_CHARS = 256
+
+
+class CustomUser(AbstractUser):
+    email = models.EmailField(unique=True, blank=False, null=False)
+    role = models.CharField('Права доступа',
+                            max_length=20,
+                            choices=(('user', 'User'),
+                                     ('moderator', 'Moderator'),
+                                     ('admin', 'Admin')),
+                            default='user')
+    bio = models.TextField('Биография', blank=True)
+
+    class Meta:
+        verbose_name = 'Пользователь'
+        verbose_name_plural = 'Пользователи'
 
 
 class Category(models.Model):
@@ -144,7 +158,7 @@ class Review(models.Model):
         blank=False
     )
     author = models.ForeignKey(
-        User, on_delete=models.CASCADE,
+        CustomUser, on_delete=models.CASCADE,
         verbose_name='Автор',
         related_name='reviews'
     )
@@ -174,7 +188,7 @@ class Comment(models.Model):
     )
     pub_date = models.DateTimeField(auto_now_add=True,
                                     verbose_name='Создан')
-    author = models.ForeignKey(User, on_delete=models.CASCADE,
+    author = models.ForeignKey(CustomUser, on_delete=models.CASCADE,
                                verbose_name='Автор',
                                related_name='commentaries')
 
