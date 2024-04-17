@@ -81,6 +81,11 @@ class TitleSerializer(serializers.ModelSerializer):
         fields = ('id', 'name', 'year', 'rating',
                   'description', 'genre', 'category')
 
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        representation['category'] = CategorySerializer(instance.category).data
+        return representation
+
     def get_genre(self, obj):
         genres = obj.genre.all()
         return [{'name': genre.name, 'slug': genre.slug} for genre in genres]

@@ -12,13 +12,6 @@ class CreateDestroyListViewSet(
     pass
 
 
-class RetrieveCreateDestroyListViewSet(
-    mixins.RetrieveModelMixin, mixins.CreateModelMixin, mixins.ListModelMixin,
-    mixins.DestroyModelMixin, viewsets.GenericViewSet
-):
-    pass
-
-
 class CustomUserViewSet(UserViewSet):
     User = get_user_model()
     queryset = User.objects.all()

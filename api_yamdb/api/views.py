@@ -71,6 +71,14 @@ class TitleViewSet(viewsets.ModelViewSet):
     filter_backends = (filters.SearchFilter,)
     search_fields = ('name',)
 
+    def update(self, request, *args, **kwargs):
+        if request.method == 'PUT':
+            return Response(
+                {"detail": "Метод не разрешен."},
+                status=status.HTTP_405_METHOD_NOT_ALLOWED
+            )
+        return super().update(request, *args, **kwargs)
+
 
 class CategoryViewSet(CreateDestroyListViewSet):
     queryset = Category.objects.all()

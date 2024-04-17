@@ -5,7 +5,7 @@ from .views import (UserRegistrationViewSet, TokenObtainView,
 
 router_v1 = DefaultRouter()
 router_v1.register('auth/signup', UserRegistrationViewSet, basename='signup')
-router_v1.register('titles', TitleViewSet, basename='titles')
+router_v1.register(r'titles', TitleViewSet, basename='titles')
 router_v1.register('categories', CategoryViewSet, basename='categories')
 router_v1.register('genres', GenreViewSet, basename='genres')
 
