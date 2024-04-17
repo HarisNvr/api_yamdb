@@ -16,7 +16,7 @@ class CustomUserAdmin(admin.ModelAdmin):
         'role',
     )
     search_fields = (
-        'firsr_name',
+        'first_name',
         'last_name',
         'email',
     )
