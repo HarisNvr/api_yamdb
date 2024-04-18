@@ -3,6 +3,7 @@ import string
 
 from django.contrib.auth import authenticate, get_user_model
 from django.core.mail import send_mail
+from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets, status, filters
 from rest_framework.response import Response
 from rest_framework.views import APIView
