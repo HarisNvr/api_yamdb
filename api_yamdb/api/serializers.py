@@ -7,7 +7,7 @@ from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 from rest_framework.validators import UniqueTogetherValidator, UniqueValidator
 
-from reviews.models import Category, Genre, Review, Comment, Title
+from reviews.models import Category, Genre, Review, Comment, Title, GenreTitle
 
 User = get_user_model()
 
@@ -70,10 +70,14 @@ class TitleSerializer(serializers.ModelSerializer):
     year = serializers.IntegerField()
     rating = serializers.FloatField(source='calculate_rating', read_only=True)
     description = serializers.CharField(max_length=512)
-    genre = serializers.SerializerMethodField()
     category = serializers.SlugRelatedField(
         queryset=Category.objects.all(),
         slug_field='slug'
+    )
+    genre = serializers.SlugRelatedField(
+        queryset=Genre.objects.all(),
+        slug_field='slug',
+        many=True
     )
 
     class Meta:
@@ -81,9 +85,20 @@ class TitleSerializer(serializers.ModelSerializer):
         fields = ('id', 'name', 'year', 'rating',
                   'description', 'genre', 'category')
 
+    def create(self, validated_data):
+        genres_data = validated_data.pop('genre', [])
+        title = Title.objects.create(**validated_data)
+
+        for genre in genres_data:
+            title.genre.add(genre)
+
+        return title
+
     def to_representation(self, instance):
         representation = super().to_representation(instance)
         representation['category'] = CategorySerializer(instance.category).data
+        representation['genre'] = GenreSerializer(instance.genre.all(),
+                                                  many=True).data
         return representation
 
     def get_genre(self, obj):

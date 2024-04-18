@@ -102,9 +102,10 @@ class Title(models.Model):
     )
     genre = models.ManyToManyField(
         Genre,
+        through='GenreTitle',
         blank=False,
         verbose_name='Жанр',
-        related_name='titles'
+        related_name='titles',
     )
     category = models.ForeignKey(
         Category,
@@ -144,6 +145,14 @@ class Title(models.Model):
     def save(self, *args, **kwargs):
         self.full_clean()
         super().save(*args, **kwargs)
+
+
+class GenreTitle(models.Model):
+    genre = models.ForeignKey(Genre, on_delete=models.CASCADE)
+    title = models.ForeignKey(Title, on_delete=models.CASCADE)
+
+    def __str__(self):
+        return f'{self.achievement} {self.cat}'
 
 
 class Review(models.Model):
