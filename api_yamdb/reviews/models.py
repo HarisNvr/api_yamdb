@@ -2,7 +2,8 @@ from datetime import datetime as dt
 
 from django.contrib.auth.models import AbstractUser
 from django.core.exceptions import ValidationError
-from django.core.validators import RegexValidator
+from django.core.validators import RegexValidator, MinValueValidator, \
+    MaxValueValidator
 from django.db import models
 
 MX_CHARS = 256
@@ -172,7 +173,11 @@ class Review(models.Model):
         related_name='reviews'
     )
     score = models.IntegerField(
-        verbose_name='Оценка'
+        verbose_name='Оценка',
+        validators=[
+            MinValueValidator(1, message='Оценка не может быть ниже 1'),
+            MaxValueValidator(10, message='Оценка не может быть больше 10')
+        ]
     )
     pub_date = models.DateTimeField(
         auto_now_add=True,
@@ -182,6 +187,12 @@ class Review(models.Model):
     class Meta:
         verbose_name = 'обзор'
         verbose_name_plural = 'Обзоры'
+        constraints = [
+            models.UniqueConstraint(
+                fields=['title', 'author'],
+                name='unique_title_author'
+            )
+        ]
 
     def __str__(self):
         return self.text
@@ -193,7 +204,7 @@ class Comment(models.Model):
         Review,
         on_delete=models.CASCADE,
         related_name='commentaries',
-        verbose_name='ID_Комментария'
+        verbose_name='ID_Обзора'
     )
     pub_date = models.DateTimeField(auto_now_add=True,
                                     verbose_name='Создан')

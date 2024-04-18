@@ -3,18 +3,20 @@ import string
 
 from django.contrib.auth import authenticate, get_user_model
 from django.core.mail import send_mail
-from django_filters.rest_framework import DjangoFilterBackend
+from django.shortcuts import get_object_or_404
 from rest_framework import viewsets, status, filters
+from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.pagination import LimitOffsetPagination
 
 from .serializers import (CustomUserCreateSerializer, TitleSerializer,
-                          GenreSerializer, CategorySerializer)
-from .permission import IsAdminOrReadOnly
+                          GenreSerializer, CategorySerializer,
+                          ReviewSerializer, CommentSerializer)
+from .permission import IsAdminOrReadOnly, IsAuthorModAdminOrReadOnlyPermission
 from .viewsets import CreateDestroyListViewSet
-from reviews.models import Title, Category, Genre
+from reviews.models import Title, Category, Genre, Review, Comment
 
 User = get_user_model()
 
@@ -122,3 +124,58 @@ class GenreViewSet(CreateDestroyListViewSet):
         instance = self.get_object()
         super(GenreViewSet, self).perform_destroy(instance)
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class ReviewViewSet(viewsets.ModelViewSet):
+    serializer_class = ReviewSerializer
+    queryset = Review.objects.all()
+    permission_classes = (IsAuthorModAdminOrReadOnlyPermission,)
+
+    def get_title(self):
+        return get_object_or_404(Title, pk=self.kwargs.get('title_id'))
+
+    def get_queryset(self):
+        title = self.get_title()
+        return title.reviews.all()
+
+    def update(self, request, *args, **kwargs):
+        if request.method == 'PUT':
+            return Response(
+                {"detail": "Метод не разрешен."},
+                status=status.HTTP_405_METHOD_NOT_ALLOWED
+            )
+        return super().update(request, *args, **kwargs)
+
+    def perform_create(self, serializer):
+        title = self.get_title()
+        if title.reviews.filter(author=self.request.user).exists():
+            raise ValidationError(
+                'Вы уже оставили отзыв на это произведение.',
+                code=400
+            )
+        serializer.save(author=self.request.user, title=title)
+
+
+class CommentViewSet(viewsets.ModelViewSet):
+    serializer_class = CommentSerializer
+    permission_classes = (IsAuthorModAdminOrReadOnlyPermission,)
+
+    def perform_create(self, serializer):
+        review = get_object_or_404(Review, id=self.kwargs['review_id'])
+        serializer.save(
+            author=self.request.user,
+            review=review
+        )
+
+    def update(self, request, *args, **kwargs):
+        if request.method == 'PUT':
+            return Response(
+                {"detail": "Метод не разрешен."},
+                status=status.HTTP_405_METHOD_NOT_ALLOWED
+            )
+        return super().update(request, *args, **kwargs)
+
+    def get_queryset(self):
+        review_id = self.kwargs['review_id']
+        queryset = Comment.objects.filter(review_id=review_id)
+        return queryset
