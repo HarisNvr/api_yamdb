@@ -1,68 +1,93 @@
-from django.contrib.auth import get_user_model
-from rest_framework import viewsets, status, mixins
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework_simplejwt.tokens import RefreshToken
-from django.core.mail import send_mail
-from django.shortcuts import get_object_or_404
-from django.contrib.auth import authenticate
 import random
 import string
 
-from .serializers import CustomUserCreateSerializer
-from .permission import IsAuthorModerAdminOrReadOnly
+from django.contrib.auth import get_user_model
+from django.core.mail import send_mail
+from rest_framework import viewsets, status, filters
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.pagination import LimitOffsetPagination
+from rest_framework_simplejwt.tokens import RefreshToken
+
+from .serializers import (
+    UserCreateSerializer, UserCreatАdvancedSerializer, TokenObtainSerializer
+)
+from .permission import IsAdmin
+from reviews.models import ActivationeCode
 
 User = get_user_model()
 
-from djoser.views import UserViewSet 
-
 
 class UserRegistrationViewSet(viewsets.GenericViewSet):
-    serializer_class = CustomUserCreateSerializer
-    queryset = User.objects.all()
-
     def create(self, request):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
         email = request.data.get('email')
-        #if not User.objects.filter(**request.data).exists:
-        #    serializer.save()
-        # Генерация и отправка кода подтверждения
+        if not User.objects.filter(username=request.data.get('username'),
+                                   email=email).exists():
+            serializer = UserCreateSerializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+
         confirmation_code = self.generate_confirmation_code()
-        self.send_confirmation_email(email, confirmation_code)
-        #user = get_object_or_404(User, username=request.data.get('username'))
+        ActivationeCode.objects.update_or_create(
+            user=User.objects.get(username=request.data.get('username')),
+            defaults={'confirmation_code': confirmation_code},
+        )
+        self.send_confirmation_email(email,
+                                     confirmation_code)
         return Response(request.data, status=status.HTTP_200_OK)
 
     def generate_confirmation_code(self):
-        # Генерация случайного кода подтверждения
-        return ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
+        return ''.join(random.choices(string.ascii_uppercase + string.digits,
+                                      k=6))
 
     def send_confirmation_email(self, email, confirmation_code):
-        # Отправка письма с кодом подтверждения на указанный email
         subject = 'Код подтверждения регистрации на YaMDB'
         message = f'Ваш код подтверждения: {confirmation_code}'
         from_email = 'noreply@example.com'
-        recipient_list = [email]
+        recipient_list = (email,)
         send_mail(subject, message, from_email, recipient_list)
 
 
 class TokenObtainView(APIView):
     def post(self, request):
-        username = request.data.get('username')
-        confirmation_code = request.data.get('confirmation_code')
+        username = User.objects.filter(
+            username=request.data.get('username')
+        ).exists()
+        if request.data.get('username') and not username:
+            return Response({'error': 'username отсутсвует в бд'},
+                            status=status.HTTP_404_NOT_FOUND)
+        serializer = TokenObtainSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        if not ActivationeCode.objects.filter(**serializer.data).exists():
+            return Response({'error': 'Данные не верны'},
+                            status=status.HTTP_400_BAD_REQUEST)
 
-        # Проверяем, существует ли пользователь с указанным username
-        user = authenticate(username=username, confirmation_code=confirmation_code)
-        if not user:
-            return Response({"error": "Пользователь не найден"}, status=status.HTTP_404_NOT_FOUND)
-
-        # Если пользователь найден, создаем JWT-токен
-        refresh = RefreshToken.for_user(user)
+        refresh = RefreshToken.for_user(username=request.data.get('username'))
         token = str(refresh.access_token)
+        return Response({'token': token}, status=status.HTTP_200_OK)
 
-        return Response({"token": token}, status=status.HTTP_200_OK)
 
-
-class CustomUserViewSet(UserViewSet):
+class CustomUserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
-    permission_classes = IsAuthorModerAdminOrReadOnly
+    permission_classes = (IsAuthenticated, IsAdmin)
+    serializer_class = UserCreatАdvancedSerializer
+    pagination_class = LimitOffsetPagination
+    lookup_field = 'username'
+    filter_backends = (filters.SearchFilter,)
+    search_fields = ('username',)
+    http_method_names = ('get', 'post', 'delete', 'patch')
+
+
+class UserProfileViewSet(viewsets.ModelViewSet):
+    permission_classes = (IsAuthenticated,)
+    serializer_class = UserCreatАdvancedSerializer
+    http_method_names = ('get', 'patch', 'post')
+
+    def get_queryset(self):
+        return User.objects.filter(username=self.request.user.username)
+
+    def list(self, request):
+        user = request.user
+        serializer = UserCreatАdvancedSerializer(user)
+        return Response(serializer.data)

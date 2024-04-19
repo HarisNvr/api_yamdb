@@ -4,10 +4,11 @@ from django.contrib.auth.admin import UserAdmin
 
 from .models import CustomUser
 
+
 @admin.register(CustomUser)
 class CustomUserAdmin(admin.ModelAdmin):
     list_display = (
-        'firsr_name',
+        'first_name',
         'last_name',
         'email',
         'bio',

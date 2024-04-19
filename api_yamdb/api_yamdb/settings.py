@@ -25,24 +25,11 @@ INSTALLED_APPS = [
 
 AUTH_USER_MODEL = 'reviews.CustomUser'
 
-DJOSER = {
-    'SERIALIZERS': {
-        'user_create': 'api.serializers.CustomUserCreateSerializer',  # Кастомный сериализатор для обычного пользователя
-        'user_create_admin': 'api.serializers.CustomUserCreateAdminSerializer',  # Кастомный сериализатор для администратора
-    }
-}
-
-SITE_NAME = 'YaMDB'
 EMAIL_BACKEND = 'django.core.mail.backends.filebased.EmailBackend'
 EMAIL_FILE_PATH = BASE_DIR / 'sent_emails'
 
-EMAIL_HOST = 'smtp.gmail.com'  # SMTP сервер
-EMAIL_PORT = 587  # Порт SMTP сервера
-EMAIL_USE_TLS = True  # Использовать TLS для защиты соединения
-EMAIL_HOST_USER = 'test-YaMDB@yandex.ru'  # Логин для SMTP сервера
-EMAIL_HOST_PASSWORD = 'qweqweqwe123321123'  # Пароль для SMTP сервера
-
 REST_FRAMEWORK = {
+    'PAGE_SIZE': 5,
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
