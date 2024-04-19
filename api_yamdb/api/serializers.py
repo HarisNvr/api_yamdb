@@ -1,19 +1,37 @@
+
 from datetime import datetime as dt
 
 from django.contrib.auth import get_user_model
 from django.core.validators import RegexValidator
+from django.http import Http404
 from djoser.serializers import UserCreateSerializer, UserSerializer
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 from rest_framework.validators import UniqueTogetherValidator, UniqueValidator
 
-from reviews.models import Category, Genre, Review, Comment, Title, GenreTitle
+from reviews.models import Category, Genre, Review, Comment, Title, GenreTitle, ActivationeCode, CustomUser
 
 User = get_user_model()
 
 
-class CustomUserCreateSerializer(UserSerializer):
 
+class TokenObtainSerializer(serializers.ModelSerializer):
+
+    user = serializers.SlugRelatedField(
+        slug_field='username', read_only=True
+    )
+
+    def validate_user(self, value):
+        if not User.objects.filter(username=value).exists() and value:
+            raise serializers.ValidationError("Email обязателен для заполнения.", code='existing_username')
+        return value
+
+    class Meta:
+        model = ActivationeCode
+        fields = ('user', 'confirmation_code')
+
+
+class UserCreateSerializer(UserSerializer):
     def validate_username(self, value):
         if value == 'me':
             raise ValidationError('Имя пользователя "me" не допустимо.')
@@ -21,12 +39,14 @@ class CustomUserCreateSerializer(UserSerializer):
 
     class Meta(UserCreateSerializer.Meta):
         fields = ('email', 'username')
-        validators = [
-            UniqueTogetherValidator(
-                queryset=User.objects.all(),
-                fields=('email', 'username')
-            ),
-        ]
+        model = User
+
+
+class UserCreatАdvancedSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = User
+        fields = ('email', 'username', 'first_name', 'last_name', 'bio', 'role')
 
 
 class CategorySerializer(serializers.ModelSerializer):
@@ -138,3 +158,4 @@ class CommentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Comment
         fields = ('id', 'text', 'author', 'pub_date')
+

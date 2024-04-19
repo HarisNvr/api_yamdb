@@ -5,6 +5,8 @@ from django.core.exceptions import ValidationError
 from django.core.validators import RegexValidator, MinValueValidator, \
     MaxValueValidator
 from django.db import models
+from django.contrib.auth.models import AbstractUser
+from django.core.cache import cache
 
 MX_CHARS = 256
 
@@ -218,3 +220,13 @@ class Comment(models.Model):
 
     def __str__(self):
         return self.text
+
+      
+class ActivationeCode(models.Model):
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
+    confirmation_code = models.CharField(max_length=6)
+
+    class Meta:
+        verbose_name = 'Код активации'
+        verbose_name_plural = 'Коды активации'
+
