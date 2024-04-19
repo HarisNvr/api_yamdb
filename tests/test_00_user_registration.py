@@ -25,7 +25,7 @@ class Test00UserRegistration:
         )
         assert response.status_code == HTTPStatus.BAD_REQUEST, (
             f'Если POST-запрос, отправленный на эндпоинт `{self.URL_SIGNUP}`, '
-            'не содержит необходимых данных, должен вернуться ответ со '
+            'не содержит необходимых данных, test_01_usersдолжен вернуться ответ со '
             'статусом 400.'
         )
         response_json = response.json()
