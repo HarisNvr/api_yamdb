@@ -48,6 +48,7 @@ class UserRegistrationViewSet(viewsets.GenericViewSet):
     def generate_confirmation_code(self):
         return ''.join(random.choices(string.ascii_uppercase + string.digits,
                                       k=6))
+
     def send_confirmation_email(self, email, confirmation_code):
         subject = 'Код подтверждения регистрации на YaMDB'
         message = f'Ваш код подтверждения: {confirmation_code}'
@@ -190,6 +191,7 @@ class CommentViewSet(viewsets.ModelViewSet):
         queryset = Comment.objects.filter(review_id=review_id)
         return queryset
 
+
 class CustomUserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
     permission_classes = (IsAuthenticated, IsAdmin)
@@ -201,15 +203,23 @@ class CustomUserViewSet(viewsets.ModelViewSet):
     http_method_names = ('get', 'post', 'delete', 'patch')
 
 
-class UserProfileViewSet(viewsets.ModelViewSet):
+class UserProfileAPIView(APIView):
     permission_classes = (IsAuthenticated,)
-    serializer_class = UserCreatАdvancedSerializer
-    http_method_names = ('get', 'patch', 'post')
 
-    def get_queryset(self):
-        return User.objects.filter(username=self.request.user.username)
+    def get(self, request):
+        return Response(UserCreatАdvancedSerializer(request.user).data)
 
-    def retrieve(self, request):
-        user = self.get_object()
-        serializer = self.get_serializer(user)
+    def patch(self, request):
+        serializer = UserCreatАdvancedSerializer(request.user,
+                                                 data=request.data,
+                                                 partial=True,
+                                                 context={'request': request})
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
         return Response(serializer.data)
+
+    def post(self, request):
+        serializer = UserCreatАdvancedSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_201_CREATED)

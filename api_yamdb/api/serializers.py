@@ -2,7 +2,6 @@ from datetime import datetime as dt
 
 from django.contrib.auth import get_user_model
 from django.core.validators import RegexValidator
-from djoser.serializers import UserCreateSerializer, UserSerializer
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 from rest_framework.validators import UniqueValidator
@@ -30,13 +29,13 @@ class TokenObtainSerializer(serializers.ModelSerializer):
         fields = ('user', 'confirmation_code')
 
 
-class UserCreateSerializer(UserSerializer):
+class UserCreateSerializer(serializers.ModelSerializer):
     def validate_username(self, value):
         if value == 'me':
             raise ValidationError('Имя пользователя "me" не допустимо.')
         return value
 
-    class Meta(UserCreateSerializer.Meta):
+    class Meta:
         fields = ('email', 'username')
         model = User
 
@@ -45,7 +44,16 @@ class UserCreatАdvancedSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ('email', 'username', 'first_name', 'last_name', 'bio', 'role')
+        fields = (
+            'email', 'username', 'first_name', 'last_name', 'bio', 'role'
+        )
+
+    def update(self, instance, validated_data):
+        user = self.context['request'].user
+        if user.role == 'admin':
+            return super().update(instance, validated_data)
+        validated_data.pop('role', None)
+        return super().update(instance, validated_data)
 
 
 class CategorySerializer(serializers.ModelSerializer):
