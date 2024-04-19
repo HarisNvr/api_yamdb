@@ -221,7 +221,7 @@ class Comment(models.Model):
     def __str__(self):
         return self.text
 
-      
+
 class ActivationeCode(models.Model):
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
     confirmation_code = models.CharField(max_length=6)
@@ -229,4 +229,3 @@ class ActivationeCode(models.Model):
     class Meta:
         verbose_name = 'Код активации'
         verbose_name_plural = 'Коды активации'
-

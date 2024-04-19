@@ -1,24 +1,28 @@
 import random
 import string
 
-from django.contrib.auth import authenticate, get_user_model
+from django.contrib.auth import get_user_model
 from django.core.mail import send_mail
 from django.shortcuts import get_object_or_404
 from rest_framework import viewsets, status, filters
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.permissions import IsAuthenticated
+from rest_framework_simplejwt.tokens import RefreshToken
 
 from .serializers import (UserCreateSerializer, TitleSerializer,
                           GenreSerializer, CategorySerializer,
                           ReviewSerializer, CommentSerializer,
                           UserCreatАdvancedSerializer, TokenObtainSerializer)
-from .permission import IsAdminOrReadOnly, IsAuthorModAdminOrReadOnlyPermission, IsAdmin
+from .permission import (
+    IsAdminOrReadOnly, IsAuthorModAdminOrReadOnlyPermission, IsAdmin
+)
 from .viewsets import CreateDestroyListViewSet
-from reviews.models import Title, Category, Genre, Review, Comment, ActivationeCode
+from reviews.models import (
+    Title, Category, Genre, Review, Comment, ActivationeCode
+)
 
 User = get_user_model()
 
@@ -185,7 +189,6 @@ class CommentViewSet(viewsets.ModelViewSet):
         review_id = self.kwargs['review_id']
         queryset = Comment.objects.filter(review_id=review_id)
         return queryset
-        
 
 class CustomUserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
@@ -206,7 +209,7 @@ class UserProfileViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         return User.objects.filter(username=self.request.user.username)
 
-    def list(self, request):
-        user = request.user
-        serializer = UserCreatАdvancedSerializer(user)
+    def retrieve(self, request):
+        user = self.get_object()
+        serializer = self.get_serializer(user)
         return Response(serializer.data)

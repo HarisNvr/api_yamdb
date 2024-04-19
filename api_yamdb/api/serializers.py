@@ -1,18 +1,17 @@
-
 from datetime import datetime as dt
 
 from django.contrib.auth import get_user_model
 from django.core.validators import RegexValidator
-from django.http import Http404
 from djoser.serializers import UserCreateSerializer, UserSerializer
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
-from rest_framework.validators import UniqueTogetherValidator, UniqueValidator
+from rest_framework.validators import UniqueValidator
 
-from reviews.models import Category, Genre, Review, Comment, Title, GenreTitle, ActivationeCode, CustomUser
+from reviews.models import (
+    Category, Genre, Review, Comment, Title, ActivationeCode
+)
 
 User = get_user_model()
-
 
 
 class TokenObtainSerializer(serializers.ModelSerializer):
@@ -23,7 +22,7 @@ class TokenObtainSerializer(serializers.ModelSerializer):
 
     def validate_user(self, value):
         if not User.objects.filter(username=value).exists() and value:
-            raise serializers.ValidationError("Email обязателен для заполнения.", code='existing_username')
+            raise serializers.ValidationError('Неподходящий username')
         return value
 
     class Meta:
@@ -158,4 +157,3 @@ class CommentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Comment
         fields = ('id', 'text', 'author', 'pub_date')
-
