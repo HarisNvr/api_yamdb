@@ -28,5 +28,4 @@ urlpatterns = [
     path('v1/users/me/', UserProfileAPIView.as_view(), name='me'),
     path('v1/', include(router_v1.urls)),
     path('v1/auth/token/', TokenObtainView.as_view(), name='token_obtain'),
-    path('v1/', include('djoser.urls.base')),
 ]
