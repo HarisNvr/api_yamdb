@@ -30,7 +30,7 @@ User = get_user_model()
 class UserRegistrationViewSet(viewsets.GenericViewSet):
     def create(self, request):
         email = request.data.get('email')
-        username=request.data.get('username')
+        username = request.data.get('username')
         if not User.objects.filter(username=username,
                                    email=email).exists():
             serializer = UserCreateSerializer(data=request.data)
