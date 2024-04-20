@@ -15,8 +15,8 @@ User = get_user_model()
 
 class TokenObtainSerializer(serializers.ModelSerializer):
 
-    user = serializers.SlugRelatedField(
-        slug_field='username', read_only=True
+    username = serializers.SlugRelatedField(
+        slug_field='user.username', read_only=True
     )
 
     def validate_user(self, value):
@@ -26,7 +26,7 @@ class TokenObtainSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = ActivationeCode
-        fields = ('user', 'confirmation_code')
+        fields = ('username', 'confirmation_code')
 
 
 class UserCreateSerializer(serializers.ModelSerializer):
