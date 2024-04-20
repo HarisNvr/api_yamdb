@@ -144,6 +144,13 @@ class TitleSerializer(serializers.ModelSerializer):
             )
         return value
 
+    def validate_genre(self, value):
+        if not value:
+            raise serializers.ValidationError(
+                'Необходимо указать хотя бы 1 жанр!'
+            )
+        return value
+
 
 class ReviewSerializer(serializers.ModelSerializer):
     author = serializers.SlugRelatedField(

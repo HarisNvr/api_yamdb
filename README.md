@@ -13,7 +13,6 @@ https://github.com/HarisNvr
 - Django
 - Django REST Framework 
 - SQLite
-- Djoser
 
 ## Как запустить проект:
 
