@@ -14,7 +14,6 @@ User = get_user_model()
 
 
 class TokenObtainSerializer(serializers.ModelSerializer):
-
     username = serializers.SlugRelatedField(
         slug_field='user.username', read_only=True
     )
@@ -41,7 +40,6 @@ class UserCreateSerializer(serializers.ModelSerializer):
 
 
 class UserCreatАdvancedSerializer(serializers.ModelSerializer):
-
     class Meta:
         model = User
         fields = (
@@ -95,8 +93,15 @@ class GenreSerializer(serializers.ModelSerializer):
 class TitleSerializer(serializers.ModelSerializer):
     name = serializers.CharField(max_length=256)
     year = serializers.IntegerField()
-    rating = serializers.FloatField(source='calculate_rating', read_only=True)
-    description = serializers.CharField(max_length=512)
+    rating = serializers.FloatField(
+        source='calculate_rating',
+        read_only=True
+    )
+    description = serializers.CharField(
+        max_length=512,
+        required=False,
+        allow_null=True
+    )
     category = serializers.SlugRelatedField(
         queryset=Category.objects.all(),
         slug_field='slug'

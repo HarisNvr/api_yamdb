@@ -1,6 +1,5 @@
 from datetime import datetime as dt
 
-from django.contrib.auth.models import AbstractUser
 from django.core.exceptions import ValidationError
 from django.core.validators import RegexValidator, MinValueValidator, \
     MaxValueValidator
@@ -100,7 +99,8 @@ class Title(models.Model):
         blank=False
     )
     description = models.TextField(
-        verbose_name='Описание'
+        verbose_name='Описание',
+        blank=True
     )
     genre = models.ManyToManyField(
         Genre,

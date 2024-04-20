@@ -57,7 +57,8 @@ class Command(BaseCommand):
                         id=row['id'],
                         defaults={
                             'name': row['name'],
-                            'category': category
+                            'category': category,
+                            'year': row['year']
                         }
                     )
             self.stdout.write(self.style.SUCCESS('Импортирован titles.csv'))
