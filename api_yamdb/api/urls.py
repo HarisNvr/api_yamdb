@@ -2,7 +2,7 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import (UserRegistrationViewSet, TokenObtainView,
                     TitleViewSet, CategoryViewSet, GenreViewSet,
-                    ReviewViewSet, CommentViewSet, CustomUserViewSet,
+                    ReviewViewSet, CommentViewSet, UserViewSet,
                     UserProfileAPIView)
 
 router_v1 = DefaultRouter()
@@ -16,7 +16,7 @@ router_v1.register(
     basename='comments')
 router_v1.register('categories', CategoryViewSet, basename='categories')
 router_v1.register('genres', GenreViewSet, basename='genres')
-router_v1.register('users', CustomUserViewSet, basename='users')
+router_v1.register('users', UserViewSet, basename='users')
 
 urlpatterns = [
     path('v1/categories/<slug:slug>/',
@@ -28,5 +28,4 @@ urlpatterns = [
     path('v1/users/me/', UserProfileAPIView.as_view(), name='me'),
     path('v1/', include(router_v1.urls)),
     path('v1/auth/token/', TokenObtainView.as_view(), name='token_obtain'),
-    path('v1/', include('djoser.urls.base')),
 ]

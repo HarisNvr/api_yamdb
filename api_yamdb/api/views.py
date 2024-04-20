@@ -10,7 +10,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.permissions import IsAuthenticated
-from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework.authtoken.models import Token
 
 from .serializers import (UserCreateSerializer, TitleSerializer,
                           GenreSerializer, CategorySerializer,
@@ -30,7 +30,8 @@ User = get_user_model()
 class UserRegistrationViewSet(viewsets.GenericViewSet):
     def create(self, request):
         email = request.data.get('email')
-        if not User.objects.filter(username=request.data.get('username'),
+        username=request.data.get('username')
+        if not User.objects.filter(username=username,
                                    email=email).exists():
             serializer = UserCreateSerializer(data=request.data)
             serializer.is_valid(raise_exception=True)
@@ -38,7 +39,7 @@ class UserRegistrationViewSet(viewsets.GenericViewSet):
 
         confirmation_code = self.generate_confirmation_code()
         ActivationeCode.objects.update_or_create(
-            user=User.objects.get(username=request.data.get('username')),
+            user=User.objects.get(username=username),
             defaults={'confirmation_code': confirmation_code},
         )
         self.send_confirmation_email(email,
@@ -59,10 +60,9 @@ class UserRegistrationViewSet(viewsets.GenericViewSet):
 
 class TokenObtainView(APIView):
     def post(self, request):
-        username = User.objects.filter(
-            username=request.data.get('username')
-        ).exists()
-        if request.data.get('username') and not username:
+        username = request.data.get('username')
+        user = User.objects.filter(username=username)
+        if username and not user.exists():
             return Response({'error': 'username отсутсвует в бд'},
                             status=status.HTTP_404_NOT_FOUND)
         serializer = TokenObtainSerializer(data=request.data)
@@ -70,10 +70,13 @@ class TokenObtainView(APIView):
         if not ActivationeCode.objects.filter(**serializer.data).exists():
             return Response({'error': 'Данные не верны'},
                             status=status.HTTP_400_BAD_REQUEST)
-
-        refresh = RefreshToken.for_user(username=request.data.get('username'))
-        token = str(refresh.access_token)
-        return Response({'token': token}, status=status.HTTP_200_OK)
+        token, created = Token.objects.get_or_create(user=user.first())
+        if created:
+            return Response({"token": token.key},
+                            status=status.HTTP_201_CREATED)
+        else:
+            return Response({"token": token.key},
+                            status=status.HTTP_200_OK)
 
 
 class TitleViewSet(viewsets.ModelViewSet):
@@ -192,7 +195,7 @@ class CommentViewSet(viewsets.ModelViewSet):
         return queryset
 
 
-class CustomUserViewSet(viewsets.ModelViewSet):
+class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
     permission_classes = (IsAuthenticated, IsAdmin)
     serializer_class = UserCreatАdvancedSerializer

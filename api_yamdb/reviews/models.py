@@ -6,12 +6,11 @@ from django.core.validators import RegexValidator, MinValueValidator, \
     MaxValueValidator
 from django.db import models
 from django.contrib.auth.models import AbstractUser
-from django.core.cache import cache
 
 MX_CHARS = 256
 
 
-class CustomUser(AbstractUser):
+class User(AbstractUser):
     email = models.EmailField(unique=True, blank=False, null=False)
     role = models.CharField('Права доступа',
                             max_length=20,
@@ -170,7 +169,7 @@ class Review(models.Model):
         blank=False
     )
     author = models.ForeignKey(
-        CustomUser, on_delete=models.CASCADE,
+        User, on_delete=models.CASCADE,
         verbose_name='Автор',
         related_name='reviews'
     )
@@ -210,7 +209,7 @@ class Comment(models.Model):
     )
     pub_date = models.DateTimeField(auto_now_add=True,
                                     verbose_name='Создан')
-    author = models.ForeignKey(CustomUser, on_delete=models.CASCADE,
+    author = models.ForeignKey(User, on_delete=models.CASCADE,
                                verbose_name='Автор',
                                related_name='commentaries')
 
@@ -223,7 +222,7 @@ class Comment(models.Model):
 
 
 class ActivationeCode(models.Model):
-    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
     confirmation_code = models.CharField(max_length=6)
 
     class Meta:
