@@ -1,6 +1,5 @@
 from datetime import datetime as dt
 
-from django.contrib.auth.models import AbstractUser
 from django.core.exceptions import ValidationError
 from django.core.validators import RegexValidator, MinValueValidator, \
     MaxValueValidator
@@ -10,7 +9,7 @@ from django.contrib.auth.models import AbstractUser
 MX_CHARS = 256
 
 
-class CustomUser(AbstractUser):
+class User(AbstractUser):
     email = models.EmailField(unique=True, blank=False, null=False)
     role = models.CharField('Права доступа',
                             max_length=20,
@@ -19,6 +18,7 @@ class CustomUser(AbstractUser):
                                      ('admin', 'Admin')),
                             default='user')
     bio = models.TextField('Биография', blank=True)
+    confirmation_code = models.CharField(max_length=6)
 
     class Meta:
         verbose_name = 'Пользователь'
@@ -100,7 +100,8 @@ class Title(models.Model):
         blank=False
     )
     description = models.TextField(
-        verbose_name='Описание'
+        verbose_name='Описание',
+        blank=True
     )
     genre = models.ManyToManyField(
         Genre,
@@ -169,7 +170,7 @@ class Review(models.Model):
         blank=False
     )
     author = models.ForeignKey(
-        CustomUser, on_delete=models.CASCADE,
+        User, on_delete=models.CASCADE,
         verbose_name='Автор',
         related_name='reviews'
     )
@@ -209,7 +210,7 @@ class Comment(models.Model):
     )
     pub_date = models.DateTimeField(auto_now_add=True,
                                     verbose_name='Создан')
-    author = models.ForeignKey(CustomUser, on_delete=models.CASCADE,
+    author = models.ForeignKey(User, on_delete=models.CASCADE,
                                verbose_name='Автор',
                                related_name='commentaries')
 
@@ -219,12 +220,3 @@ class Comment(models.Model):
 
     def __str__(self):
         return self.text
-
-
-class ActivationeCode(models.Model):
-    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
-    confirmation_code = models.CharField(max_length=6)
-
-    class Meta:
-        verbose_name = 'Код активации'
-        verbose_name_plural = 'Коды активации'

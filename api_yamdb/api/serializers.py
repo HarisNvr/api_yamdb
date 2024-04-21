@@ -7,16 +7,15 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.validators import UniqueValidator
 
 from reviews.models import (
-    Category, Genre, Review, Comment, Title, ActivationeCode
+    Category, Genre, Review, Comment, Title
 )
 
 User = get_user_model()
 
 
 class TokenObtainSerializer(serializers.ModelSerializer):
-
-    user = serializers.SlugRelatedField(
-        slug_field='username', read_only=True
+    username = serializers.SlugRelatedField(
+        slug_field='user.username', read_only=True
     )
 
     def validate_user(self, value):
@@ -25,8 +24,8 @@ class TokenObtainSerializer(serializers.ModelSerializer):
         return value
 
     class Meta:
-        model = ActivationeCode
-        fields = ('user', 'confirmation_code')
+        model = User
+        fields = ('username', 'confirmation_code')
 
 
 class UserCreateSerializer(serializers.ModelSerializer):
@@ -41,7 +40,6 @@ class UserCreateSerializer(serializers.ModelSerializer):
 
 
 class UserCreatАdvancedSerializer(serializers.ModelSerializer):
-
     class Meta:
         model = User
         fields = (
@@ -95,8 +93,15 @@ class GenreSerializer(serializers.ModelSerializer):
 class TitleSerializer(serializers.ModelSerializer):
     name = serializers.CharField(max_length=256)
     year = serializers.IntegerField()
-    rating = serializers.FloatField(source='calculate_rating', read_only=True)
-    description = serializers.CharField(max_length=512)
+    rating = serializers.FloatField(
+        source='calculate_rating',
+        read_only=True
+    )
+    description = serializers.CharField(
+        max_length=512,
+        required=False,
+        allow_null=True
+    )
     category = serializers.SlugRelatedField(
         queryset=Category.objects.all(),
         slug_field='slug'
@@ -141,6 +146,13 @@ class TitleSerializer(serializers.ModelSerializer):
         elif value > current_year:
             raise serializers.ValidationError(
                 'Год создания не может быть больше текущего!'
+            )
+        return value
+
+    def validate_genre(self, value):
+        if not value:
+            raise serializers.ValidationError(
+                'Необходимо указать хотя бы 1 жанр!'
             )
         return value
 
