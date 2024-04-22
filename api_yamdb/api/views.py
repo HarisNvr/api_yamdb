@@ -5,6 +5,7 @@ from django.contrib.auth import get_user_model
 from django.core.mail import send_mail
 from django.db.models import Avg
 from django.shortcuts import get_object_or_404
+from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets, status, filters
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
@@ -31,6 +32,8 @@ from reviews.models import (
     Review,
     Comment
 )
+
+from .filters import TitleFilter
 
 User = get_user_model()
 
@@ -90,22 +93,8 @@ class TitleViewSet(viewsets.ModelViewSet):
     pagination_class = LimitOffsetPagination
     permission_classes = (IsAdminOrReadOnly,)
     http_method_names = ALLOWED_METHODS
-
-    def get_queryset(self):
-        queryset = super().get_queryset()
-        genre_slug = self.request.query_params.get('genre', None)
-        category_slug = self.request.query_params.get('category', None)
-        title_year = self.request.query_params.get('year', None)
-        title_name = self.request.query_params.get('name', None)
-        if genre_slug:
-            queryset = queryset.filter(genre__slug=genre_slug)
-        elif category_slug:
-            queryset = queryset.filter(category__slug=category_slug)
-        elif title_year:
-            queryset = queryset.filter(year=title_year)
-        elif title_name:
-            queryset = queryset.filter(name=title_name)
-        return queryset
+    filter_backends = [DjangoFilterBackend]
+    filterset_class = TitleFilter
 
 
 class CategoryViewSet(CategoryGenreViewSet):
