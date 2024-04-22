@@ -88,9 +88,8 @@ class Title(models.Model):
     )
     genre = models.ManyToManyField(
         Genre,
-        through='GenreTitle',
         verbose_name='Жанр',
-        related_name='titles',
+        related_name='titles'
     )
     category = models.ForeignKey(
         Category,
@@ -108,15 +107,6 @@ class Title(models.Model):
         return self.name[:MX_CHARS_STR] + "..." if (
                 len(self.name) > MX_CHARS_STR
         ) else self.name
-
-
-class GenreTitle(models.Model):
-    genre = models.ForeignKey(Genre, on_delete=models.CASCADE)
-    title = models.ForeignKey(Title, on_delete=models.CASCADE)
-
-    class Meta:
-        verbose_name = 'жанр произведения'
-        verbose_name_plural = 'Жанры произведений'
 
 
 class ReviewComment(models.Model):
