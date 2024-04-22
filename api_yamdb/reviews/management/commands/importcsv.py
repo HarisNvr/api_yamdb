@@ -5,8 +5,15 @@ from django.core.management.base import BaseCommand
 from django.conf import settings
 from django.utils.dateparse import parse_datetime
 
-from reviews.models import Category, Genre, Title, User, Review, Comment, \
+from reviews.models import (
+    Category,
+    Genre,
+    Title,
+    User,
+    Review,
+    Comment,
     GenreTitle
+)
 
 
 class Command(BaseCommand):

@@ -54,7 +54,7 @@ class UserCreatАdvancedSerializer(serializers.ModelSerializer):
         return super().update(instance, validated_data)
 
 
-class CategorySerializer(serializers.ModelSerializer):
+class CategoryGenreSerializer(serializers.ModelSerializer):
     name = serializers.CharField(max_length=256)
     slug = serializers.CharField(max_length=16, validators=[
         RegexValidator(
@@ -67,40 +67,23 @@ class CategorySerializer(serializers.ModelSerializer):
         )
     ])
 
+
+class CategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = Category
         fields = ('name', 'slug')
 
 
 class GenreSerializer(serializers.ModelSerializer):
-    name = serializers.CharField(max_length=256)
-    slug = serializers.CharField(max_length=16, validators=[
-        RegexValidator(
-            regex=r'^[-a-zA-Z0-9_]+$',
-            message='Слаг может содержать только латинские '
-                    'буквы, цифры, дефисы и знаки подчеркивания.'
-        ),
-        UniqueValidator(
-            queryset=Genre.objects.all()
-        )
-    ])
-
     class Meta:
         model = Genre
         fields = ('name', 'slug')
 
 
 class TitleSerializer(serializers.ModelSerializer):
-    name = serializers.CharField(max_length=256)
-    year = serializers.IntegerField()
-    rating = serializers.FloatField(
+    rating = serializers.IntegerField(
         source='calculate_rating',
         read_only=True
-    )
-    description = serializers.CharField(
-        max_length=512,
-        required=False,
-        allow_null=True
     )
     category = serializers.SlugRelatedField(
         queryset=Category.objects.all(),
@@ -109,7 +92,9 @@ class TitleSerializer(serializers.ModelSerializer):
     genre = serializers.SlugRelatedField(
         queryset=Genre.objects.all(),
         slug_field='slug',
-        many=True
+        many=True,
+        allow_null=False,
+        allow_empty=False
     )
 
     class Meta:
@@ -117,44 +102,12 @@ class TitleSerializer(serializers.ModelSerializer):
         fields = ('id', 'name', 'year', 'rating',
                   'description', 'genre', 'category')
 
-    def create(self, validated_data):
-        genres_data = validated_data.pop('genre', [])
-        title = Title.objects.create(**validated_data)
-
-        for genre in genres_data:
-            title.genre.add(genre)
-
-        return title
-
     def to_representation(self, instance):
         representation = super().to_representation(instance)
         representation['category'] = CategorySerializer(instance.category).data
         representation['genre'] = GenreSerializer(instance.genre.all(),
                                                   many=True).data
         return representation
-
-    def get_genre(self, obj):
-        genres = obj.genre.all()
-        return [{'name': genre.name, 'slug': genre.slug} for genre in genres]
-
-    def validate_year(self, value):
-        current_year = dt.now().year
-        if value <= 0:
-            raise serializers.ValidationError(
-                'Год создания не может быть отрицательным числом!'
-            )
-        elif value > current_year:
-            raise serializers.ValidationError(
-                'Год создания не может быть больше текущего!'
-            )
-        return value
-
-    def validate_genre(self, value):
-        if not value:
-            raise serializers.ValidationError(
-                'Необходимо указать хотя бы 1 жанр!'
-            )
-        return value
 
 
 class ReviewSerializer(serializers.ModelSerializer):

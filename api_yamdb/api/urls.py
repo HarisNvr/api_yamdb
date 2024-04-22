@@ -1,5 +1,6 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
+
 from .views import (UserRegistrationViewSet, TokenObtainView,
                     TitleViewSet, CategoryViewSet, GenreViewSet,
                     ReviewViewSet, CommentViewSet, UserViewSet,
@@ -19,12 +20,6 @@ router_v1.register('genres', GenreViewSet, basename='genres')
 router_v1.register('users', UserViewSet, basename='users')
 
 urlpatterns = [
-    path('v1/categories/<slug:slug>/',
-         CategoryViewSet.as_view({'delete': 'perform_destroy'}),
-         name='category-destroy'),
-    path('v1/genres/<slug:slug>/',
-         GenreViewSet.as_view({'delete': 'perform_destroy'}),
-         name='genre-destroy'),
     path('v1/users/me/', UserProfileAPIView.as_view(), name='me'),
     path('v1/', include(router_v1.urls)),
     path('v1/auth/token/', TokenObtainView.as_view(), name='token_obtain'),

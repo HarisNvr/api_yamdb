@@ -17,11 +17,17 @@ from .serializers import (UserCreateSerializer, TitleSerializer,
                           ReviewSerializer, CommentSerializer,
                           UserCreatАdvancedSerializer, TokenObtainSerializer)
 from .permission import (
-    IsAdminOrReadOnly, IsAuthorModAdminOrReadOnlyPermission, IsAdmin
+    IsAdminOrReadOnly,
+    IsAuthorModAdminOrReadOnlyPermission,
+    IsAdmin
 )
-from .viewsets import CreateDestroyListViewSet
+from .viewsets import CreateDestroyListViewSet, CategoryGenreViewSet
 from reviews.models import (
-    Title, Category, Genre, Review, Comment
+    Title,
+    Category,
+    Genre,
+    Review,
+    Comment
 )
 
 User = get_user_model()
@@ -107,34 +113,14 @@ class TitleViewSet(viewsets.ModelViewSet):
         return super().update(request, *args, **kwargs)
 
 
-class CategoryViewSet(CreateDestroyListViewSet):
+class CategoryViewSet(CategoryGenreViewSet):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
-    pagination_class = LimitOffsetPagination
-    permission_classes = (IsAdminOrReadOnly,)
-    filter_backends = (filters.SearchFilter,)
-    search_fields = ('name',)
-    lookup_field = 'slug'
-
-    def perform_destroy(self, request, *args, **kwargs):
-        instance = self.get_object()
-        super(CategoryViewSet, self).perform_destroy(instance)
-        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-class GenreViewSet(CreateDestroyListViewSet):
+class GenreViewSet(CategoryGenreViewSet):
     queryset = Genre.objects.all()
     serializer_class = GenreSerializer
-    pagination_class = LimitOffsetPagination
-    permission_classes = (IsAdminOrReadOnly,)
-    filter_backends = (filters.SearchFilter,)
-    search_fields = ('name',)
-    lookup_field = 'slug'
-
-    def perform_destroy(self, request, *args, **kwargs):
-        instance = self.get_object()
-        super(GenreViewSet, self).perform_destroy(instance)
-        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class ReviewViewSet(viewsets.ModelViewSet):
@@ -146,8 +132,7 @@ class ReviewViewSet(viewsets.ModelViewSet):
         return get_object_or_404(Title, pk=self.kwargs.get('title_id'))
 
     def get_queryset(self):
-        title = self.get_title()
-        return title.reviews.all()
+        return self.get_title().reviews.all()
 
     def update(self, request, *args, **kwargs):
         if request.method == 'PUT':
@@ -187,9 +172,7 @@ class CommentViewSet(viewsets.ModelViewSet):
         return super().update(request, *args, **kwargs)
 
     def get_queryset(self):
-        review_id = self.kwargs['review_id']
-        queryset = Comment.objects.filter(review_id=review_id)
-        return queryset
+        return Comment.objects.filter(review_id=self.kwargs['review_id'])
 
 
 class UserViewSet(viewsets.ModelViewSet):
