@@ -1,7 +1,9 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
+from django.db.models import Avg
+
 from .models import (
-    User, Category, Genre, Title, GenreTitle, Review, Comment, ActivationeCode
+    User, Category, Genre, Title, Review, Comment
 )
 
 
@@ -34,12 +36,15 @@ class TitleAdmin(admin.ModelAdmin):
     list_filter = ('category', 'genre')
     search_fields = ('name', 'year')
 
+    def calculate_rating(self, obj):
+        return obj.rating
 
-@admin.register(GenreTitle)
-class GenreTitleAdmin(admin.ModelAdmin):
-    list_display = ('genre', 'title')
-    list_filter = ('genre',)
-    search_fields = ('genre__name', 'title__name')
+    calculate_rating.short_description = 'Rating'
+
+    def get_queryset(self, request):
+        queryset = super().get_queryset(request)
+        queryset = queryset.annotate(rating=Avg('reviews__score'))
+        return queryset
 
 
 @admin.register(Review)
@@ -55,9 +60,3 @@ class CommentAdmin(admin.ModelAdmin):
     list_display = ('text', 'review', 'author', 'pub_date')
     list_filter = ('author', 'pub_date')
     search_fields = ('text', 'review__title__name', 'author__username')
-
-
-@admin.register(ActivationeCode)
-class ActivationeCodeAdmin(admin.ModelAdmin):
-    list_display = ('user', 'confirmation_code')
-    search_fields = ('user__username', 'confirmation_code')
