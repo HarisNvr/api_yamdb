@@ -104,15 +104,6 @@ class Title(models.Model):
         verbose_name_plural = 'Произведения'
         ordering = ('name',)
 
-    def calculate_rating(self):
-        reviews = self.reviews.all()
-        if reviews.exists():
-            total_score = sum(review.score for review in reviews)
-            num_reviews = reviews.count()
-            return round((total_score / num_reviews), 2)
-        else:
-            return None
-
     def __str__(self):
         return self.name[:MX_CHARS_STR] + "..." if (
                 len(self.name) > MX_CHARS_STR

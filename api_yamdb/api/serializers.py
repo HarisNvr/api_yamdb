@@ -81,10 +81,7 @@ class GenreSerializer(serializers.ModelSerializer):
 
 
 class TitleSerializer(serializers.ModelSerializer):
-    rating = serializers.IntegerField(
-        source='calculate_rating',
-        read_only=True
-    )
+    rating = serializers.IntegerField(read_only=True)
     category = serializers.SlugRelatedField(
         queryset=Category.objects.all(),
         slug_field='slug'

@@ -3,6 +3,7 @@ import string
 
 from django.contrib.auth import get_user_model
 from django.core.mail import send_mail
+from django.db.models import Avg
 from django.shortcuts import get_object_or_404
 from rest_framework import viewsets, status, filters
 from rest_framework.exceptions import ValidationError
@@ -21,7 +22,8 @@ from .permission import (
     IsAuthorModAdminOrReadOnlyPermission,
     IsAdmin
 )
-from .viewsets import CreateDestroyListViewSet, CategoryGenreViewSet
+from .viewsets import CategoryGenreViewSet
+from reviews.constants import ALLOWED_METHODS
 from reviews.models import (
     Title,
     Category,
@@ -83,10 +85,11 @@ class TokenObtainView(APIView):
 
 
 class TitleViewSet(viewsets.ModelViewSet):
-    queryset = Title.objects.all()
+    queryset = Title.objects.annotate(rating=Avg('reviews__score'))
     serializer_class = TitleSerializer
     pagination_class = LimitOffsetPagination
     permission_classes = (IsAdminOrReadOnly,)
+    http_method_names = ALLOWED_METHODS
 
     def get_queryset(self):
         queryset = super().get_queryset()
@@ -104,14 +107,6 @@ class TitleViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(name=title_name)
         return queryset
 
-    def update(self, request, *args, **kwargs):
-        if request.method == 'PUT':
-            return Response(
-                {"detail": "Метод не разрешен."},
-                status=status.HTTP_405_METHOD_NOT_ALLOWED
-            )
-        return super().update(request, *args, **kwargs)
-
 
 class CategoryViewSet(CategoryGenreViewSet):
     queryset = Category.objects.all()
@@ -127,20 +122,13 @@ class ReviewViewSet(viewsets.ModelViewSet):
     serializer_class = ReviewSerializer
     queryset = Review.objects.all()
     permission_classes = (IsAuthorModAdminOrReadOnlyPermission,)
+    http_method_names = ALLOWED_METHODS
 
     def get_title(self):
         return get_object_or_404(Title, pk=self.kwargs.get('title_id'))
 
     def get_queryset(self):
         return self.get_title().reviews.all()
-
-    def update(self, request, *args, **kwargs):
-        if request.method == 'PUT':
-            return Response(
-                {"detail": "Метод не разрешен."},
-                status=status.HTTP_405_METHOD_NOT_ALLOWED
-            )
-        return super().update(request, *args, **kwargs)
 
     def perform_create(self, serializer):
         title = self.get_title()
@@ -155,24 +143,25 @@ class ReviewViewSet(viewsets.ModelViewSet):
 class CommentViewSet(viewsets.ModelViewSet):
     serializer_class = CommentSerializer
     permission_classes = (IsAuthorModAdminOrReadOnlyPermission,)
+    http_method_names = ALLOWED_METHODS
 
     def perform_create(self, serializer):
-        review = get_object_or_404(Review, id=self.kwargs['review_id'])
+        review = get_object_or_404(
+            Review,
+            id=self.kwargs['review_id'],
+            title=get_object_or_404(
+                Title,
+                pk=self.kwargs.get('title_id')
+            )
+        )
         serializer.save(
             author=self.request.user,
             review=review
         )
 
-    def update(self, request, *args, **kwargs):
-        if request.method == 'PUT':
-            return Response(
-                {"detail": "Метод не разрешен."},
-                status=status.HTTP_405_METHOD_NOT_ALLOWED
-            )
-        return super().update(request, *args, **kwargs)
-
     def get_queryset(self):
-        return Comment.objects.filter(review_id=self.kwargs['review_id'])
+        review = Review.objects.get(id=self.kwargs['review_id'])
+        return review.commentaries.all()
 
 
 class UserViewSet(viewsets.ModelViewSet):
