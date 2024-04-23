@@ -49,8 +49,9 @@ class TitleViewSet(viewsets.ModelViewSet):
     pagination_class = LimitOffsetPagination
     permission_classes = (IsAdminOrReadOnly,)
     http_method_names = ALLOWED_METHODS
-    filter_backends = (DjangoFilterBackend,)
+    filter_backends = (DjangoFilterBackend, filters.OrderingFilter)
     filterset_class = TitleFilter
+    ordering_fields = ('name', 'year', 'category', 'genre')
 
 
 class CategoryViewSet(CategoryGenreViewSet):
