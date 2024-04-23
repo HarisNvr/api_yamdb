@@ -1,103 +1,120 @@
 from datetime import datetime as dt
 
-from django.core.exceptions import ValidationError
-from django.core.validators import RegexValidator, MinValueValidator, \
+from django.core.validators import (
+    MinValueValidator,
     MaxValueValidator
+)
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 
-MX_CHARS = 256
+from .constants import (
+    MX_CHARS,
+    MX_CHARS_BIG,
+    MX_CHARS_STR,
+    MIN_REVIEW_SCORE,
+    MAX_REVIEW_SCORE
+)
+
+ROLE_CHOISE = (
+    ('user', 'Пользователь'),
+    ('moderator', 'Модератор'),
+    ('admin', 'Администратор')
+)
+
+CONFIRMATION_CODE_LEN = 6
 
 
 class User(AbstractUser):
-    email = models.EmailField(unique=True, blank=False, null=False)
-    role = models.CharField('Права доступа',
-                            max_length=20,
-                            choices=(('user', 'User'),
-                                     ('moderator', 'Moderator'),
-                                     ('admin', 'Admin')),
-                            default='user')
+    email = models.EmailField(
+        'Мыло',
+        unique=True,
+        blank=False,
+        null=False,
+        max_length=MX_CHARS - 2
+    )
+    role = models.CharField(
+        'Права доступа',
+        max_length=max(len(key) for key, _ in ROLE_CHOISE),
+        choices=ROLE_CHOISE,
+        default=ROLE_CHOISE[0][0]
+    )
     bio = models.TextField('Биография', blank=True)
-    confirmation_code = models.CharField(max_length=6)
+    confirmation_code = models.CharField(max_length=CONFIRMATION_CODE_LEN)
+
+    @property
+    def is_admin(self):
+        return self.role == 'admin' or self.is_staff or self.is_superuser
+
+    @property
+    def is_moderator(self):
+        return self.role == 'moderator'
+
+    def clean(self):
+        super().clean()
+        if self.username == 'me':
+            raise ValidationError("Username 'me' is not allowed.")
+
+    def save(self, *args, **kwargs):
+        self.clean()
+        super().save(*args, **kwargs)
 
     class Meta:
         verbose_name = 'Пользователь'
         verbose_name_plural = 'Пользователи'
 
+    def __str__(self):
+        return self.username
 
-class Category(models.Model):
+
+class CategoryGenre(models.Model):
     name = models.CharField(
-        max_length=MX_CHARS,
+        max_length=MX_CHARS_BIG,
         verbose_name='Название',
         unique=True,
-        blank=False
     )
     slug = models.SlugField(
-        max_length=50,
+        max_length=MX_CHARS,
         unique=True,
-        blank=False,
         verbose_name='Идентификатор',
         help_text='Идентификатор страницы для URL; разрешены символы '
-                  'латиницы, цифры, дефис и подчёркивание.',
-        validators=[
-            RegexValidator(
-                regex=r'^[-a-zA-Z0-9_]+$',
-                message='Идентификатор страницы должен содержать только '
-                        'латинские символы, цифры, дефис и подчёркивание.',
-                code='invalid_slug'
-            )
-        ]
+                  'латиницы, цифры, дефис и подчёркивание.'
     )
 
+    class Meta:
+        abstract = True
+        ordering = ('name',)
+
+    def __str__(self):
+        return self.name[:MX_CHARS_STR] + "..." if (
+                len(self.name) > MX_CHARS_STR
+        ) else self.name
+
+
+class Category(CategoryGenre):
     class Meta:
         verbose_name = 'категория'
         verbose_name_plural = 'Категории'
 
-    def __str__(self):
-        return self.name
 
-
-class Genre(models.Model):
-    name = models.CharField(
-        max_length=MX_CHARS,
-        verbose_name='Название',
-        unique=True,
-        blank=False
-    )
-    slug = models.SlugField(
-        max_length=50,
-        unique=True,
-        blank=False,
-        verbose_name='Идентификатор',
-        help_text='Идентификатор страницы для URL; разрешены символы '
-                  'латиницы, цифры, дефис и подчёркивание.',
-        validators=[
-            RegexValidator(
-                regex=r'^[-a-zA-Z0-9_]+$',
-                message='Идентификатор страницы должен содержать только '
-                        'латинские символы, цифры, дефис и подчёркивание.',
-                code='invalid_slug'
-            )
-        ]
-    )
-
+class Genre(CategoryGenre):
     class Meta:
         verbose_name = 'жанр'
         verbose_name_plural = 'Жанры'
 
-    def __str__(self):
-        return self.name
-
 
 class Title(models.Model):
     name = models.CharField(
-        max_length=MX_CHARS,
-        verbose_name='Название',
-        blank=False
+        max_length=MX_CHARS_BIG,
+        verbose_name='Название'
     )
-    year = models.IntegerField(
+    year = models.SmallIntegerField(
         verbose_name='Год выхода',
-        blank=False
+        validators=[
+            MaxValueValidator(
+                dt.now().year,
+                message='Год не может быть больше текущего.'
+            )
+        ]
     )
     description = models.TextField(
         verbose_name='Описание',
@@ -105,15 +122,12 @@ class Title(models.Model):
     )
     genre = models.ManyToManyField(
         Genre,
-        through='GenreTitle',
-        blank=False,
         verbose_name='Жанр',
-        related_name='titles',
+        related_name='titles'
     )
     category = models.ForeignKey(
         Category,
         on_delete=models.DO_NOTHING,
-        blank=False,
         verbose_name='Категория',
         related_name='titles'
     )
@@ -121,69 +135,52 @@ class Title(models.Model):
     class Meta:
         verbose_name = 'произведение'
         verbose_name_plural = 'Произведения'
-
-    def calculate_rating(self):
-        reviews = self.reviews.all()
-        if reviews.exists():
-            total_score = sum(review.score for review in reviews)
-            num_reviews = reviews.count()
-            return total_score / num_reviews
-        else:
-            return None
-
-    def clean(self):
-        super().clean()
-        if self.year < 0:
-            raise ValidationError(
-                {'year': 'Год создания не может быть отрицательным числом!'}
-            )
-        elif self.year > dt.now().year:
-            raise ValidationError(
-                {'year': 'Год создания не может быть больше текущего!'}
-            )
+        ordering = ('name',)
 
     def __str__(self):
-        return self.name
-
-    def save(self, *args, **kwargs):
-        self.full_clean()
-        super().save(*args, **kwargs)
+        return self.name[:MX_CHARS_STR] + "..." if (
+                len(self.name) > MX_CHARS_STR
+        ) else self.name
 
 
-class GenreTitle(models.Model):
-    genre = models.ForeignKey(Genre, on_delete=models.CASCADE)
-    title = models.ForeignKey(Title, on_delete=models.CASCADE)
+class ReviewComment(models.Model):
+    text = models.TextField(verbose_name='Содержание')
+    pub_date = models.DateTimeField(auto_now_add=True)
+    author = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        verbose_name='Автор'
+    )
+
+    class Meta:
+        abstract = True
+        ordering = ('-pub_date',)
 
     def __str__(self):
-        return f'{self.achievement} {self.cat}'
+        return self.text[:MX_CHARS_STR] + "..." if (
+                len(self.text) > MX_CHARS_STR
+        ) else self.text
 
 
-class Review(models.Model):
+class Review(ReviewComment):
     title = models.ForeignKey(
         Title,
         on_delete=models.CASCADE,
         related_name='reviews',
-        verbose_name='ID_Произведения'
+        verbose_name='Произведение'
     )
-    text = models.TextField(
-        verbose_name='Текст обзора',
-        blank=False
-    )
-    author = models.ForeignKey(
-        User, on_delete=models.CASCADE,
-        verbose_name='Автор',
-        related_name='reviews'
-    )
-    score = models.IntegerField(
+    score = models.SmallIntegerField(
         verbose_name='Оценка',
         validators=[
-            MinValueValidator(1, message='Оценка не может быть ниже 1'),
-            MaxValueValidator(10, message='Оценка не может быть больше 10')
+            MinValueValidator(
+                MIN_REVIEW_SCORE,
+                message=f'Оценка не может быть ниже {MIN_REVIEW_SCORE}'
+            ),
+            MaxValueValidator(
+                MAX_REVIEW_SCORE,
+                message=f'Оценка не может быть больше {MAX_REVIEW_SCORE}'
+            )
         ]
-    )
-    pub_date = models.DateTimeField(
-        auto_now_add=True,
-        verbose_name='Создан'
     )
 
     class Meta:
@@ -191,32 +188,22 @@ class Review(models.Model):
         verbose_name_plural = 'Обзоры'
         constraints = [
             models.UniqueConstraint(
-                fields=['title', 'author'],
+                fields=('title', 'author'),
                 name='unique_title_author'
             )
         ]
-
-    def __str__(self):
-        return self.text
+        ordering = ('-pub_date',)
 
 
-class Comment(models.Model):
-    text = models.TextField(verbose_name='Текст комментария')
+class Comment(ReviewComment):
     review = models.ForeignKey(
         Review,
         on_delete=models.CASCADE,
         related_name='commentaries',
-        verbose_name='ID_Обзора'
+        verbose_name='Обзор'
     )
-    pub_date = models.DateTimeField(auto_now_add=True,
-                                    verbose_name='Создан')
-    author = models.ForeignKey(User, on_delete=models.CASCADE,
-                               verbose_name='Автор',
-                               related_name='commentaries')
 
     class Meta:
         verbose_name = 'комментарий'
         verbose_name_plural = 'Комментарии'
-
-    def __str__(self):
-        return self.text
+        ordering = ('-pub_date',)

@@ -1,8 +1,9 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
+from django.db.models import Avg
 
 from .models import (
-    User, Category, Genre, Title, GenreTitle, Review, Comment
+    User, Category, Genre, Title, Review, Comment
 )
 
 
@@ -11,6 +12,7 @@ class UserAdmin(BaseUserAdmin):
     list_display = ('first_name', 'last_name', 'email', 'bio', 'role')
     list_filter = ('role',)
     search_fields = ('first_name', 'last_name', 'email')
+    list_editable = ('role',)
 
 
 @admin.register(Category)
@@ -29,18 +31,21 @@ class GenreAdmin(admin.ModelAdmin):
 @admin.register(Title)
 class TitleAdmin(admin.ModelAdmin):
     list_display = (
-        'name', 'description', 'year', 'category', 'calculate_rating'
+        'name', 'description', 'year', 'category', 'calculate_rating',
     )
     list_display_links = ('name', 'description', 'year', 'category')
     list_filter = ('category', 'genre')
     search_fields = ('name', 'year')
 
+    def calculate_rating(self, obj):
+        return obj.rating
 
-@admin.register(GenreTitle)
-class GenreTitleAdmin(admin.ModelAdmin):
-    list_display = ('genre', 'title')
-    list_filter = ('genre',)
-    search_fields = ('genre__name', 'title__name')
+    calculate_rating.short_description = 'Rating'
+
+    def get_queryset(self, request):
+        queryset = super().get_queryset(request)
+        queryset = queryset.annotate(rating=Avg('reviews__score'))
+        return queryset
 
 
 @admin.register(Review)
