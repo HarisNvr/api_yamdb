@@ -12,10 +12,6 @@ class TitleFilter(django_filters.FilterSet):
         field_name='category__slug',
         lookup_expr='exact'
     )
-    year = django_filters.NumberFilter(
-        field_name='year',
-        lookup_expr='exact'
-    )
     name = django_filters.CharFilter(
         field_name='name',
         lookup_expr='icontains'
@@ -23,4 +19,4 @@ class TitleFilter(django_filters.FilterSet):
 
     class Meta:
         model = Title
-        fields = ['genre', 'category', 'year', 'name']
+        fields = ('genre', 'category', 'year', 'name')
