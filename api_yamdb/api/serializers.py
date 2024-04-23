@@ -1,57 +1,120 @@
-from datetime import datetime as dt
+import random
+import string
 
-from django.contrib.auth import get_user_model
+from django.core.mail import send_mail
 from django.core.validators import RegexValidator
+from django.shortcuts import get_object_or_404
 from rest_framework import serializers
-from rest_framework.exceptions import ValidationError
+from rest_framework.exceptions import ValidationError, NotFound
 from rest_framework.validators import UniqueValidator
+from rest_framework_simplejwt.tokens import AccessToken
 
 from reviews.models import (
-    Category, Genre, Review, Comment, Title
+    Category, Genre, Review, Comment, Title, User
 )
-
-User = get_user_model()
+from reviews.constants import EMAIL_LEN, CONFIRMATION_CODE_LEN, USERNAME_LEN
 
 
 class TokenObtainSerializer(serializers.ModelSerializer):
-    username = serializers.SlugRelatedField(
-        slug_field='user.username', read_only=True
+    username = serializers.CharField(
+        max_length=USERNAME_LEN, write_only=True,
     )
+    confirmation_code = serializers.CharField(
+        max_length=CONFIRMATION_CODE_LEN, required=True, write_only=True,
+    )
+    token = serializers.SerializerMethodField()
 
-    def validate_user(self, value):
+    def get_token(self, user):
+        return str(AccessToken.for_user(user))
+
+    def validate_username(self, value):
         if not User.objects.filter(username=value).exists() and value:
-            raise serializers.ValidationError('Неподходящий username')
+            raise NotFound('Invalid username')
         return value
+
+    def validate_confirmation_code(self, value):
+        if not value.isalnum() or len(value) != CONFIRMATION_CODE_LEN:
+            raise ValidationError("Invalid confirmation code")
+        return value
+
+    def create(self, validated_data):
+        user = get_object_or_404(self.Meta.model, **validated_data)
+        self.get_token(user)
+        user.confirmation_code = None
+        user.save()
+        return user
 
     class Meta:
         model = User
-        fields = ('username', 'confirmation_code')
+        fields = ('username', 'confirmation_code', 'token')
 
 
 class UserCreateSerializer(serializers.ModelSerializer):
+    email = serializers.EmailField(
+        max_length=EMAIL_LEN, required=True,
+    )
+    username = serializers.CharField(
+        max_length=USERNAME_LEN,
+        required=True,
+        validators=(RegexValidator(
+                    regex=r'^[-a-zA-Z0-9_]+$',
+                    message='Username может содержать только латинские '
+                            'буквы, цифры, дефисы и знаки подчеркивания.'
+                    ),)
+    )
+
     def validate_username(self, value):
+        if not value:
+            raise NotFound()
         if value == 'me':
             raise ValidationError('Имя пользователя "me" не допустимо.')
         return value
 
+    def validate(self, attrs):
+        if self.Meta.model.objects.filter(
+            username=attrs.get('username')
+        ).exists() != self.Meta.model.objects.filter(
+            email=attrs.get('email')
+        ).exists():
+            raise ValidationError('Данные не валидны')
+        return attrs
+
+    def create(self, validated_data):
+        instance, _ = self.Meta.model.objects.get_or_create(**validated_data)
+        confirmation_code = self.generate_confirmation_code()
+        instance.confirmation_code = confirmation_code
+        instance.save()
+        self.send_confirmation_email(validated_data.get('email'),
+                                     confirmation_code)
+        return instance
+
+    def generate_confirmation_code(self):
+        return ''.join(random.choices(string.ascii_uppercase + string.digits,
+                                      k=CONFIRMATION_CODE_LEN))
+
+    def send_confirmation_email(self, email, confirmation_code):
+        subject = 'Код подтверждения регистрации на YaMDB'
+        message = f'Ваш код подтверждения: {confirmation_code}'
+        from_email = None
+        recipient_list = (email,)
+        send_mail(subject, message, from_email, recipient_list)
+
     class Meta:
-        fields = ('email', 'username')
         model = User
+        fields = ('email', 'username')
 
 
-class UserCreatАdvancedSerializer(serializers.ModelSerializer):
+class UserCreatAdvancedSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = (
             'email', 'username', 'first_name', 'last_name', 'bio', 'role'
         )
 
-    def update(self, instance, validated_data):
-        user = self.context['request'].user
-        if user.role == 'admin':
-            return super().update(instance, validated_data)
-        validated_data.pop('role', None)
-        return super().update(instance, validated_data)
+
+class UserProfileSerializer(UserCreatAdvancedSerializer):
+    class Meta(UserCreatAdvancedSerializer.Meta):
+        read_only_fields = ('role',)
 
 
 class CategoryGenreSerializer(serializers.ModelSerializer):

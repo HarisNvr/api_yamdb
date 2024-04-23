@@ -12,3 +12,11 @@ ALLOWED_METHODS = [
     'patch',
     'trace'
 ]
+ROLE_CHOISE = (
+    ('user', 'Пользователь'),
+    ('moderator', 'Модератор'),
+    ('admin', 'Администратор')
+)
+CONFIRMATION_CODE_LEN = 6
+EMAIL_LEN = 254
+USERNAME_LEN = 150

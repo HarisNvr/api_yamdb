@@ -6,30 +6,62 @@ from django.core.validators import (
 )
 from django.db import models
 from django.contrib.auth.models import AbstractUser
+from django.core.exceptions import ValidationError
 
 from .constants import (
     MX_CHARS,
     MX_CHARS_BIG,
     MX_CHARS_STR,
     MIN_REVIEW_SCORE,
-    MAX_REVIEW_SCORE
+    MAX_REVIEW_SCORE,
+    CONFIRMATION_CODE_LEN,
+    ROLE_CHOISE,
+    EMAIL_LEN,
 )
 
 
 class User(AbstractUser):
-    email = models.EmailField(unique=True, blank=False, null=False)
-    role = models.CharField('Права доступа',
-                            max_length=20,
-                            choices=(('user', 'User'),
-                                     ('moderator', 'Moderator'),
-                                     ('admin', 'Admin')),
-                            default='user')
+    email = models.EmailField(
+        'Мыло',
+        unique=True,
+        blank=False,
+        null=False,
+        max_length=EMAIL_LEN
+    )
+    role = models.CharField(
+        'Права доступа',
+        max_length=max(len(key) for key, _ in ROLE_CHOISE),
+        choices=ROLE_CHOISE,
+        default=ROLE_CHOISE[0][0]
+    )
     bio = models.TextField('Биография', blank=True)
-    confirmation_code = models.CharField(max_length=6)
+    confirmation_code = models.CharField(
+        max_length=CONFIRMATION_CODE_LEN, blank=True, null=True
+    )
+
+    @property
+    def is_admin(self):
+        return self.role == 'admin' or self.is_staff or self.is_superuser
+
+    @property
+    def is_moderator(self):
+        return self.role == 'moderator'
+
+    def clean(self):
+        super().clean()
+        if self.username == 'me':
+            raise ValidationError("Username 'me' is not allowed.")
+
+    def save(self, *args, **kwargs):
+        self.clean()
+        super().save(*args, **kwargs)
 
     class Meta:
         verbose_name = 'Пользователь'
         verbose_name_plural = 'Пользователи'
+
+    def __str__(self):
+        return self.username
 
 
 class CategoryGenre(models.Model):
@@ -52,7 +84,7 @@ class CategoryGenre(models.Model):
 
     def __str__(self):
         return self.name[:MX_CHARS_STR] + "..." if (
-                len(self.name) > MX_CHARS_STR
+            len(self.name) > MX_CHARS_STR
         ) else self.name
 
 
@@ -105,7 +137,7 @@ class Title(models.Model):
 
     def __str__(self):
         return self.name[:MX_CHARS_STR] + "..." if (
-                len(self.name) > MX_CHARS_STR
+            len(self.name) > MX_CHARS_STR
         ) else self.name
 
 
@@ -124,7 +156,7 @@ class ReviewComment(models.Model):
 
     def __str__(self):
         return self.text[:MX_CHARS_STR] + "..." if (
-                len(self.text) > MX_CHARS_STR
+            len(self.text) > MX_CHARS_STR
         ) else self.text
 
 
