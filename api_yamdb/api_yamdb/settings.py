@@ -1,8 +1,6 @@
 from pathlib import Path
 from datetime import timedelta
 
-from datetime import timedelta
-
 BASE_DIR = Path(__file__).resolve().parent.parent
 CSV_DATA_PATH = 'static/data/'
 
