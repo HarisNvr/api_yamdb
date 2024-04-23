@@ -1,79 +1,41 @@
-import random
-import string
-
 from django.contrib.auth import get_user_model
-from django.core.mail import send_mail
 from django.shortcuts import get_object_or_404
 from rest_framework import viewsets, status, filters
+from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.permissions import IsAuthenticated
-from rest_framework_simplejwt.tokens import AccessToken
 
 from .serializers import (UserCreateSerializer, TitleSerializer,
                           GenreSerializer, CategorySerializer,
                           ReviewSerializer, CommentSerializer,
-                          UserCreatАdvancedSerializer, TokenObtainSerializer)
+                          UserCreatAdvancedSerializer, TokenObtainSerializer,
+                          UserProfileSerializer,)
 from .permission import (
     IsAdminOrReadOnly, IsAuthorModAdminOrReadOnlyPermission, IsAdmin
 )
 from .viewsets import CreateDestroyListViewSet
 from reviews.models import (
-    Title, Category, Genre, Review, Comment
+    Title, Category, Genre, Review, Comment, User
 )
 
-User = get_user_model()
 
-
-class UserRegistrationViewSet(viewsets.GenericViewSet):
-    def create(self, request):
-        email = request.data.get('email')
-        username = request.data.get('username')
-        if not User.objects.filter(username=username,
-                                   email=email).exists():
-            serializer = UserCreateSerializer(data=request.data)
-            serializer.is_valid(raise_exception=True)
-            serializer.save()
-
-        confirmation_code = self.generate_confirmation_code()
-        user = User.objects.get(username=username)
-        user.confirmation_code = confirmation_code
-        user.save()
-        self.send_confirmation_email(email,
-                                     confirmation_code)
-        return Response(request.data, status=status.HTTP_200_OK)
-
-    def generate_confirmation_code(self):
-        return ''.join(random.choices(string.ascii_uppercase + string.digits,
-                                      k=6))
-
-    def send_confirmation_email(self, email, confirmation_code):
-        subject = 'Код подтверждения регистрации на YaMDB'
-        message = f'Ваш код подтверждения: {confirmation_code}'
-        from_email = 'noreply@example.com'
-        recipient_list = (email,)
-        send_mail(subject, message, from_email, recipient_list)
+class UserRegistrationView(APIView):
+    def post(self, request):
+        serializer = UserCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 class TokenObtainView(APIView):
     def post(self, request):
         serializer = TokenObtainSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        username = request.data.get('username')
-        user = User.objects.filter(username=username)
-        print(username)
-        print(serializer.data)
-        if username and not user.exists():
-            return Response({'error': 'username отсутсвует в бд'},
-                            status=status.HTTP_404_NOT_FOUND)
-        if not User.objects.filter(**serializer.data).exists():
-            return Response({'error': 'Данные не верны'},
-                            status=status.HTTP_400_BAD_REQUEST)
-        token = str(AccessToken.for_user(user.first()))
-        return Response({"token": token},
-                        status=status.HTTP_200_OK)
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 class TitleViewSet(viewsets.ModelViewSet):
@@ -195,31 +157,39 @@ class CommentViewSet(viewsets.ModelViewSet):
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
     permission_classes = (IsAuthenticated, IsAdmin)
-    serializer_class = UserCreatАdvancedSerializer
+    serializer_class = UserCreatAdvancedSerializer
     pagination_class = LimitOffsetPagination
     lookup_field = 'username'
     filter_backends = (filters.SearchFilter,)
     search_fields = ('username',)
     http_method_names = ('get', 'post', 'delete', 'patch')
 
+    def get_permissions(self):
+        if self.request.path.endswith('/me/'):
+            return (IsAuthenticated(),)
+        return super().get_permissions()
 
-class UserProfileAPIView(APIView):
-    permission_classes = (IsAuthenticated,)
+    def get_serializer_class(self):
+        if self.request.path.endswith('/me/'):
+            return UserProfileSerializer
+        return super().get_serializer_class()
 
-    def get(self, request):
-        return Response(UserCreatАdvancedSerializer(request.user).data)
+    @action(detail=True, methods=('get',))
+    def me(self, request):
+        return Response(self.get_serializer(request.user).data)
 
-    def patch(self, request):
-        serializer = UserCreatАdvancedSerializer(request.user,
-                                                 data=request.data,
-                                                 partial=True,
-                                                 context={'request': request})
+    @me.mapping.patch
+    def patch_me(self, request):
+        serializer = self.get_serializer(request.user,
+                                         data=request.data,
+                                         partial=True,)
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data)
 
-    def post(self, request):
-        serializer = UserCreatАdvancedSerializer(data=request.data)
+    @me.mapping.post
+    def post_me(self, request):
+        serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data, status=status.HTTP_201_CREATED)

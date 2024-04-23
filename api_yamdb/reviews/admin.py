@@ -11,6 +11,7 @@ class UserAdmin(BaseUserAdmin):
     list_display = ('first_name', 'last_name', 'email', 'bio', 'role')
     list_filter = ('role',)
     search_fields = ('first_name', 'last_name', 'email')
+    list_editable = ('role',)
 
 
 @admin.register(Category)
@@ -29,7 +30,7 @@ class GenreAdmin(admin.ModelAdmin):
 @admin.register(Title)
 class TitleAdmin(admin.ModelAdmin):
     list_display = (
-        'name', 'description', 'year', 'category', 'calculate_rating'
+        'name', 'description', 'year', 'category', 'calculate_rating',
     )
     list_display_links = ('name', 'description', 'year', 'category')
     list_filter = ('category', 'genre')

@@ -8,21 +8,55 @@ from django.contrib.auth.models import AbstractUser
 
 MX_CHARS = 256
 
+ROLE_CHOISE = (
+    ('user', 'Пользователь'),
+    ('moderator', 'Модератор'),
+    ('admin', 'Администратор')
+)
+
+CONFIRMATION_CODE_LEN = 6
+
 
 class User(AbstractUser):
-    email = models.EmailField(unique=True, blank=False, null=False)
-    role = models.CharField('Права доступа',
-                            max_length=20,
-                            choices=(('user', 'User'),
-                                     ('moderator', 'Moderator'),
-                                     ('admin', 'Admin')),
-                            default='user')
+    email = models.EmailField(
+        'Мыло',
+        unique=True,
+        blank=False,
+        null=False,
+        max_length=MX_CHARS - 2
+    )
+    role = models.CharField(
+        'Права доступа',
+        max_length=max(len(key) for key, _ in ROLE_CHOISE),
+        choices=ROLE_CHOISE,
+        default=ROLE_CHOISE[0][0]
+    )
     bio = models.TextField('Биография', blank=True)
-    confirmation_code = models.CharField(max_length=6)
+    confirmation_code = models.CharField(max_length=CONFIRMATION_CODE_LEN)
+
+    @property
+    def is_admin(self):
+        return self.role == 'admin' or self.is_staff or self.is_superuser
+
+    @property
+    def is_moderator(self):
+        return self.role == 'moderator'
+
+    def clean(self):
+        super().clean()
+        if self.username == 'me':
+            raise ValidationError("Username 'me' is not allowed.")
+
+    def save(self, *args, **kwargs):
+        self.clean()
+        super().save(*args, **kwargs)
 
     class Meta:
         verbose_name = 'Пользователь'
         verbose_name_plural = 'Пользователи'
+
+    def __str__(self):
+        return self.username
 
 
 class Category(models.Model):
