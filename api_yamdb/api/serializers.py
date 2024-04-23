@@ -1,27 +1,35 @@
 from datetime import datetime as dt
+import re
+import random
+import string
 
-from django.contrib.auth import get_user_model
+from django.core.mail import send_mail
 from django.core.validators import RegexValidator
 from rest_framework import serializers
-from rest_framework.exceptions import ValidationError
+from rest_framework.exceptions import ValidationError, NotFound
 from rest_framework.validators import UniqueValidator
+from rest_framework_simplejwt.tokens import AccessToken
 
 from reviews.models import (
-    Category, Genre, Review, Comment, Title
+    Category, Genre, Review, Comment, Title, User
 )
-
-User = get_user_model()
 
 
 class TokenObtainSerializer(serializers.ModelSerializer):
-    username = serializers.SlugRelatedField(
-        slug_field='user.username', read_only=True
-    )
+    def validate_confirmation_code(self, value):
+        return not (value is None)
 
-    def validate_user(self, value):
+    def validate_username(self, value):
         if not User.objects.filter(username=value).exists() and value:
-            raise serializers.ValidationError('Неподходящий username')
+            raise NotFound('Invalid username')
         return value
+
+    def create(self, validated_data):
+        user = User.objects.get(**validated_data)
+        token = str(AccessToken.for_user(user))
+        user.confirmation_code = None
+        user.save()
+        return {'token': token}
 
     class Meta:
         model = User
@@ -29,29 +37,70 @@ class TokenObtainSerializer(serializers.ModelSerializer):
 
 
 class UserCreateSerializer(serializers.ModelSerializer):
+    email = serializers.EmailField(max_length=254)
+    username = serializers.CharField(
+        max_length=150,
+        validators=(RegexValidator(
+                    regex=r'^[-a-zA-Z0-9_]+$',
+                    message='Username может содержать только латинские '
+                            'буквы, цифры, дефисы и знаки подчеркивания.'
+                    ),)
+    )
+
+    def create(self, validated_data):
+        instance, _ = self.Meta.model.objects.get_or_create(**validated_data)
+        confirmation_code = self.generate_confirmation_code()
+        instance.confirmation_code = confirmation_code
+        instance.save()
+        self.send_confirmation_email(validated_data.get('email'),
+                                     confirmation_code)
+        return instance
+
     def validate_username(self, value):
+        if not value:
+            raise NotFound()
         if value == 'me':
             raise ValidationError('Имя пользователя "me" не допустимо.')
         return value
 
+    def validate(self, attrs):
+        username = attrs.get('username')
+        email = attrs.get('email')
+        existing_user = User.objects.filter(username=username).exists()
+        existing_email = User.objects.filter(email=email).exists()
+        if not username:
+            raise NotFound('username обязательное поле')
+        if existing_user != existing_email:
+            raise ValidationError('Данные не валидны')
+        return attrs
+
+    def generate_confirmation_code(self):
+        return ''.join(random.choices(string.ascii_uppercase + string.digits,
+                                      k=6))
+
+    def send_confirmation_email(self, email, confirmation_code):
+        subject = 'Код подтверждения регистрации на YaMDB'
+        message = f'Ваш код подтверждения: {confirmation_code}'
+        from_email = 'noreply@example.com'
+        recipient_list = (email,)
+        send_mail(subject, message, from_email, recipient_list)
+
     class Meta:
-        fields = ('email', 'username')
         model = User
+        fields = ('email', 'username')
 
 
-class UserCreatАdvancedSerializer(serializers.ModelSerializer):
+class UserCreatAdvancedSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = (
             'email', 'username', 'first_name', 'last_name', 'bio', 'role'
         )
 
-    def update(self, instance, validated_data):
-        user = self.context['request'].user
-        if user.role == 'admin':
-            return super().update(instance, validated_data)
-        validated_data.pop('role', None)
-        return super().update(instance, validated_data)
+
+class UserProfileSerializer(UserCreatAdvancedSerializer):
+    class Meta(UserCreatAdvancedSerializer.Meta):
+        read_only_fields = ('role',)
 
 
 class CategoryGenreSerializer(serializers.ModelSerializer):
