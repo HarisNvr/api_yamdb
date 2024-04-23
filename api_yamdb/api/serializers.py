@@ -117,20 +117,6 @@ class UserProfileSerializer(UserCreatAdvancedSerializer):
         read_only_fields = ('role',)
 
 
-class CategoryGenreSerializer(serializers.ModelSerializer):
-    name = serializers.CharField(max_length=256)
-    slug = serializers.CharField(max_length=16, validators=[
-        RegexValidator(
-            regex=r'^[-a-zA-Z0-9_]+$',
-            message='Слаг может содержать только латинские '
-                    'буквы, цифры, дефисы и знаки подчеркивания.'
-        ),
-        UniqueValidator(
-            queryset=Category.objects.all()
-        )
-    ])
-
-
 class CategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = Category

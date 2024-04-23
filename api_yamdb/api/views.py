@@ -49,7 +49,7 @@ class TitleViewSet(viewsets.ModelViewSet):
     pagination_class = LimitOffsetPagination
     permission_classes = (IsAdminOrReadOnly,)
     http_method_names = ALLOWED_METHODS
-    filter_backends = [DjangoFilterBackend]
+    filter_backends = (DjangoFilterBackend,)
     filterset_class = TitleFilter
 
 
@@ -90,8 +90,8 @@ class CommentViewSet(viewsets.ModelViewSet):
     permission_classes = (IsAuthorModAdminOrReadOnlyPermission,)
     http_method_names = ALLOWED_METHODS
 
-    def perform_create(self, serializer):
-        review = get_object_or_404(
+    def get_review(self):
+        return get_object_or_404(
             Review,
             id=self.kwargs['review_id'],
             title=get_object_or_404(
@@ -99,13 +99,16 @@ class CommentViewSet(viewsets.ModelViewSet):
                 pk=self.kwargs.get('title_id')
             )
         )
+
+    def perform_create(self, serializer):
+        review = self.get_review()
         serializer.save(
             author=self.request.user,
             review=review
         )
 
     def get_queryset(self):
-        review = Review.objects.get(id=self.kwargs['review_id'])
+        review = self.get_review()
         return review.commentaries.all()
 
 
