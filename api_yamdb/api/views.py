@@ -78,11 +78,6 @@ class ReviewViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         title = self.get_title()
-        if title.reviews.filter(author=self.request.user).exists():
-            raise ValidationError(
-                'Вы уже оставили отзыв на это произведение.',
-                code=400
-            )
         serializer.save(author=self.request.user, title=title)
 
 
