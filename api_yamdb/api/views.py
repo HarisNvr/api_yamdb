@@ -21,10 +21,8 @@ from .permission import (
 )
 from .viewsets import CreateDestroyListViewSet
 from reviews.models import (
-    Title, Category, Genre, Review, Comment
+    Title, Category, Genre, Review, Comment, User
 )
-
-User = get_user_model()
 
 
 class UserRegistrationViewSet(viewsets.GenericViewSet):
