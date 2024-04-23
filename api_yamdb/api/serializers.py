@@ -3,6 +3,7 @@ import string
 
 from django.core.mail import send_mail
 from django.core.validators import RegexValidator
+from django.shortcuts import get_object_or_404
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError, NotFound
 from rest_framework.validators import UniqueValidator
@@ -15,36 +16,68 @@ from reviews.constants import EMAIL_LEN, CONFIRMATION_CODE_LEN, USERNAME_LEN
 
 
 class TokenObtainSerializer(serializers.ModelSerializer):
-    def validate_confirmation_code(self, value):
-        return not (value is None)
+    username = serializers.CharField(
+        max_length=USERNAME_LEN, write_only=True,
+    )
+    confirmation_code = serializers.CharField(
+        max_length=CONFIRMATION_CODE_LEN, required=True, write_only=True,
+    )
+    token = serializers.SerializerMethodField()
+
+    def get_token(self, user):
+        return str(AccessToken.for_user(user))
 
     def validate_username(self, value):
         if not User.objects.filter(username=value).exists() and value:
             raise NotFound('Invalid username')
         return value
 
+    def validate_confirmation_code(self, value):
+        if not value.isalnum() or len(value) != CONFIRMATION_CODE_LEN:
+            raise ValidationError("Invalid confirmation code")
+        return value
+
     def create(self, validated_data):
-        user = User.objects.get(**validated_data)
-        token = str(AccessToken.for_user(user))
+        user = get_object_or_404(self.Meta.model, **validated_data)
+        self.get_token(user)
         user.confirmation_code = None
         user.save()
-        return {'token': token}
+        return user
 
     class Meta:
         model = User
-        fields = ('username', 'confirmation_code')
+        fields = ('username', 'confirmation_code', 'token')
 
 
 class UserCreateSerializer(serializers.ModelSerializer):
-    email = serializers.EmailField(max_length=EMAIL_LEN)
+    email = serializers.EmailField(
+        max_length=EMAIL_LEN, required=True,
+    )
     username = serializers.CharField(
         max_length=USERNAME_LEN,
+        required=True,
         validators=(RegexValidator(
                     regex=r'^[-a-zA-Z0-9_]+$',
                     message='Username может содержать только латинские '
                             'буквы, цифры, дефисы и знаки подчеркивания.'
                     ),)
     )
+
+    def validate_username(self, value):
+        if not value:
+            raise NotFound()
+        if value == 'me':
+            raise ValidationError('Имя пользователя "me" не допустимо.')
+        return value
+
+    def validate(self, attrs):
+        if self.Meta.model.objects.filter(
+            username=attrs.get('username')
+        ).exists() != self.Meta.model.objects.filter(
+            email=attrs.get('email')
+        ).exists():
+            raise ValidationError('Данные не валидны')
+        return attrs
 
     def create(self, validated_data):
         instance, _ = self.Meta.model.objects.get_or_create(**validated_data)
@@ -55,24 +88,6 @@ class UserCreateSerializer(serializers.ModelSerializer):
                                      confirmation_code)
         return instance
 
-    def validate_username(self, value):
-        if not value:
-            raise NotFound()
-        if value == 'me':
-            raise ValidationError('Имя пользователя "me" не допустимо.')
-        return value
-
-    def validate(self, attrs):
-        username = attrs.get('username')
-        email = attrs.get('email')
-        existing_user = User.objects.filter(username=username).exists()
-        existing_email = User.objects.filter(email=email).exists()
-        if not username:
-            raise NotFound('username обязательное поле')
-        if existing_user != existing_email:
-            raise ValidationError('Данные не валидны')
-        return attrs
-
     def generate_confirmation_code(self):
         return ''.join(random.choices(string.ascii_uppercase + string.digits,
                                       k=CONFIRMATION_CODE_LEN))
@@ -80,7 +95,7 @@ class UserCreateSerializer(serializers.ModelSerializer):
     def send_confirmation_email(self, email, confirmation_code):
         subject = 'Код подтверждения регистрации на YaMDB'
         message = f'Ваш код подтверждения: {confirmation_code}'
-        from_email = 'noreply@example.com'
+        from_email = None
         recipient_list = (email,)
         send_mail(subject, message, from_email, recipient_list)
 
