@@ -123,9 +123,7 @@ class UserViewSet(viewsets.ModelViewSet):
             return UserProfileSerializer
         return super().get_serializer_class()
 
-    @action(
-        detail=True, permission_classes=(IsAuthenticated,),
-    )
+    @action(detail=False, permission_classes=(IsAuthenticated,))
     def me(self, request):
         return Response(self.get_serializer(request.user).data)
 
