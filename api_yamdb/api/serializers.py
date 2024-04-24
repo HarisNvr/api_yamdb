@@ -154,15 +154,15 @@ class ReviewSerializer(serializers.ModelSerializer):
         read_only_fields = ('author',)
 
     def validate(self, data):
-        title_id = self.context['view'].kwargs.get('title_id')
-        title = get_object_or_404(Title, pk=title_id)
-        author = self.context['request'].user
+        if self.context['request'].method != 'GET':
+            title = self.context['view'].kwargs.get('title_id')
+            author = self.context['request'].user
 
-        if not self.instance:
-            if Review.objects.filter(title=title, author=author).exists():
-                raise serializers.ValidationError(
-                    'Вы уже написали обзор на это произведение.'
-                )
+            if not self.instance:
+                if Review.objects.filter(title=title, author=author).exists():
+                    raise serializers.ValidationError(
+                        'Вы уже написали обзор на это произведение.'
+                    )
 
         return data
 
