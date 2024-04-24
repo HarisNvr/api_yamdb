@@ -4,7 +4,7 @@ import string
 from django.core.mail import send_mail
 from django.shortcuts import get_object_or_404
 from rest_framework import serializers
-from rest_framework.exceptions import ValidationError
+from rest_framework.exceptions import ValidationError, NotFound
 from rest_framework_simplejwt.tokens import AccessToken
 
 from reviews.models import (
@@ -29,13 +29,19 @@ class TokenObtainSerializer(
     class Meta:
         fields = ('username', 'confirmation_code')
 
+    def validate_username(self, value):
+        if not User.objects.filter(username=value).exists():
+            raise NotFound('Invalid username')
+        return UsernameValidatorMixin.validate_username(self, value)
+
     def validate_confirmation_code(self, value):
-        if (not value.isalnum() or len(value) != CONFIRMATION_CODE_LEN):
+        if not value.isalnum() or len(value) != CONFIRMATION_CODE_LEN:
             raise ValidationError('Invalid confirmation code')
         print('code')
         return value
 
     def create(self, validated_data):
+        print('user')
         user = get_object_or_404(User, **validated_data)
         return AccessToken.for_user(user)
 
