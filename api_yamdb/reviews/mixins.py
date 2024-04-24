@@ -1,7 +1,7 @@
 import re
 
 from django.core.exceptions import ValidationError
-from rest_framework.exceptions import ValidationError, NotFound
+
 
 class UsernameValidatorMixin:
     def validate_username(self, username):

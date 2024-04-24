@@ -30,7 +30,9 @@ class TokenObtainSerializer(
         fields = ('username', 'confirmation_code')
 
     def validate_confirmation_code(self, value):
-        if not value.isalnum() or len(value) != CONFIRMATION_CODE_LEN:
+        print('code:', value)
+        print(not value.isalnum() or len(value) != CONFIRMATION_CODE_LEN)
+        if (not value.isalnum() or len(value) != CONFIRMATION_CODE_LEN):
             raise ValidationError('Invalid confirmation code')
         print('code')
         return value
@@ -151,15 +153,15 @@ class ReviewSerializer(serializers.ModelSerializer):
         read_only_fields = ('author',)
 
     def validate(self, data):
-        title_id = self.context['view'].kwargs.get('title_id')
-        title = get_object_or_404(Title, pk=title_id)
-        author = self.context['request'].user
+        if self.context['request'].method != 'GET':
+            title = self.context['view'].kwargs.get('title_id')
+            author = self.context['request'].user
 
-        if not self.instance:
-            if Review.objects.filter(title=title, author=author).exists():
-                raise serializers.ValidationError(
-                    'Вы уже написали обзор на это произведение.'
-                )
+            if not self.instance:
+                if Review.objects.filter(title=title, author=author).exists():
+                    raise serializers.ValidationError(
+                        'Вы уже написали обзор на это произведение.'
+                    )
 
         return data
 

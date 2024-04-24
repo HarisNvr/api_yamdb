@@ -1,5 +1,3 @@
-from django.utils import timezone
-from django.core.exceptions import ValidationError
 from django.core.validators import (
     MinValueValidator,
     MaxValueValidator
@@ -21,6 +19,7 @@ from .constants import (
     ROLE_USER,
 )
 from .mixins import UsernameValidatorMixin
+from .validators import validate_year
 
 
 class User(AbstractUser, UsernameValidatorMixin):
@@ -75,7 +74,7 @@ class NameSlugBaseModel(models.Model):
         ordering = ('name',)
 
     def __str__(self):
-        return self.name[:MX_CHARS_STR] + "..." if (
+        return self.name[:MX_CHARS_STR] + '...' if (
             len(self.name) > MX_CHARS_STR
         ) else self.name
 
@@ -90,11 +89,6 @@ class Genre(NameSlugBaseModel):
     class Meta:
         verbose_name = 'жанр'
         verbose_name_plural = 'Жанры'
-
-
-def validate_year(value):
-    if value > timezone.now().year:
-        raise ValidationError('Год не может быть больше текущего.')
 
 
 class Title(models.Model):
@@ -128,7 +122,7 @@ class Title(models.Model):
         ordering = ('name',)
 
     def __str__(self):
-        return self.name[:MX_CHARS_STR] + "..." if (
+        return self.name[:MX_CHARS_STR] + '...' if (
             len(self.name) > MX_CHARS_STR
         ) else self.name
 
@@ -147,7 +141,7 @@ class TextPubDateAuthorBaseModel(models.Model):
         ordering = ('-pub_date',)
 
     def __str__(self):
-        return self.text[:MX_CHARS_STR] + "..." if (
+        return self.text[:MX_CHARS_STR] + '...' if (
             len(self.text) > MX_CHARS_STR
         ) else self.text
 
