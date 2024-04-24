@@ -1,6 +1,5 @@
 import re
 
-from django.utils import timezone
 from django.core.exceptions import ValidationError
 
 
@@ -13,9 +12,3 @@ class UsernameValidatorMixin:
             raise ValidationError(f'{username}содержит недопустимые'
                                   f'символы: {forbidden_chars}')
         return username
-
-
-def validate_year(value):
-    if value > timezone.now().year:
-        raise ValidationError('Год не может быть больше текущего.')
-    return value

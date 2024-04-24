@@ -18,7 +18,8 @@ from .constants import (
     ROLE_MODERATOR,
     ROLE_USER,
 )
-from .mixins import UsernameValidatorMixin, validate_year
+from .mixins import UsernameValidatorMixin
+from .validators import validate_year
 
 
 class User(AbstractUser, UsernameValidatorMixin):
