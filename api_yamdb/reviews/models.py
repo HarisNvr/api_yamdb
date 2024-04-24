@@ -6,7 +6,6 @@ from django.core.validators import (
 )
 from django.db import models
 from django.contrib.auth.models import AbstractUser
-from django.core.exceptions import ValidationError
 
 from .constants import (
     MX_CHARS,
@@ -17,48 +16,40 @@ from .constants import (
     CONFIRMATION_CODE_LEN,
     ROLE_CHOISE,
     EMAIL_LEN,
+    ROLE_ADMIN,
+    ROLE_MODERATOR,
+    ROLE_USER,
 )
+from .mixins import UsernameValidatorMixin
 
-
-class User(AbstractUser):
+class User(AbstractUser, UsernameValidatorMixin):
     email = models.EmailField(
         'Мыло',
         unique=True,
-        blank=False,
-        null=False,
         max_length=EMAIL_LEN
     )
     role = models.CharField(
         'Права доступа',
         max_length=max(len(key) for key, _ in ROLE_CHOISE),
         choices=ROLE_CHOISE,
-        default=ROLE_CHOISE[0][0]
+        default=ROLE_USER
     )
     bio = models.TextField('Биография', blank=True)
     confirmation_code = models.CharField(
         max_length=CONFIRMATION_CODE_LEN, blank=True, null=True
     )
 
-    @property
-    def is_admin(self):
-        return self.role == 'admin' or self.is_staff or self.is_superuser
-
-    @property
-    def is_moderator(self):
-        return self.role == 'moderator'
-
-    def clean(self):
-        super().clean()
-        if self.username == 'me':
-            raise ValidationError("Username 'me' is not allowed.")
-
-    def save(self, *args, **kwargs):
-        self.clean()
-        super().save(*args, **kwargs)
-
     class Meta:
         verbose_name = 'Пользователь'
         verbose_name_plural = 'Пользователи'
+
+    @property
+    def is_admin(self):
+        return self.role == ROLE_ADMIN or self.is_staff or self.is_superuser
+
+    @property
+    def is_moderator(self):
+        return self.role == ROLE_MODERATOR
 
     def __str__(self):
         return self.username

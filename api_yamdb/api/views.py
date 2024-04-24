@@ -40,7 +40,9 @@ class TokenObtainView(APIView):
         serializer = TokenObtainSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.save()
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        print(serializer.data)
+        return Response({'token': str(serializer.data)},
+                        status=status.HTTP_200_OK)
 
 
 class TitleViewSet(viewsets.ModelViewSet):
@@ -111,7 +113,7 @@ class CommentViewSet(viewsets.ModelViewSet):
 
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
-    permission_classes = (IsAuthenticated, IsAdmin)
+    permission_classes = (IsAuthenticated, IsAdmin,)
     serializer_class = UserCreatAdvancedSerializer
     pagination_class = LimitOffsetPagination
     lookup_field = 'username'
@@ -119,17 +121,14 @@ class UserViewSet(viewsets.ModelViewSet):
     search_fields = ('username',)
     http_method_names = ('get', 'post', 'delete', 'patch')
 
-    def get_permissions(self):
-        if self.request.path.endswith('/me/'):
-            return (IsAuthenticated(),)
-        return super().get_permissions()
-
     def get_serializer_class(self):
         if self.request.path.endswith('/me/'):
             return UserProfileSerializer
         return super().get_serializer_class()
 
-    @action(detail=True, methods=('get',))
+    @action(
+        detail=True, permission_classes=(IsAuthenticated,),
+    )
     def me(self, request):
         return Response(self.get_serializer(request.user).data)
 
@@ -141,10 +140,3 @@ class UserViewSet(viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data)
-
-    @me.mapping.post
-    def post_me(self, request):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-        return Response(serializer.data, status=status.HTTP_201_CREATED)

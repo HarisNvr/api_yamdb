@@ -13,74 +13,66 @@ from reviews.models import (
     Category, Genre, Review, Comment, Title, User
 )
 from reviews.constants import EMAIL_LEN, CONFIRMATION_CODE_LEN, USERNAME_LEN
+from reviews.mixins import UsernameValidatorMixin
 
 
-class TokenObtainSerializer(serializers.ModelSerializer):
+class TokenObtainSerializer(
+    serializers.Serializer, UsernameValidatorMixin
+):
     username = serializers.CharField(
-        max_length=USERNAME_LEN, write_only=True,
+        max_length=USERNAME_LEN,
+        required=True,
+        write_only=True,
     )
     confirmation_code = serializers.CharField(
         max_length=CONFIRMATION_CODE_LEN, required=True, write_only=True,
     )
-    token = serializers.SerializerMethodField()
 
-    def get_token(self, user):
-        return str(AccessToken.for_user(user))
+    class Meta:
+        fields = ('username', 'confirmation_code')
 
     def validate_username(self, value):
         if not User.objects.filter(username=value).exists() and value:
             raise NotFound('Invalid username')
-        return value
+        return UsernameValidatorMixin.validate_username(self, value)
 
     def validate_confirmation_code(self, value):
         if not value.isalnum() or len(value) != CONFIRMATION_CODE_LEN:
-            raise ValidationError("Invalid confirmation code")
+            raise ValidationError('Invalid confirmation code')
         return value
 
     def create(self, validated_data):
-        user = get_object_or_404(self.Meta.model, **validated_data)
-        self.get_token(user)
-        user.confirmation_code = None
-        user.save()
-        return user
-
-    class Meta:
-        model = User
-        fields = ('username', 'confirmation_code', 'token')
+        user = get_object_or_404(User, **validated_data)
+        return AccessToken.for_user(user)
 
 
-class UserCreateSerializer(serializers.ModelSerializer):
+class UserCreateSerializer(
+    serializers.Serializer, UsernameValidatorMixin
+):
     email = serializers.EmailField(
         max_length=EMAIL_LEN, required=True,
     )
     username = serializers.CharField(
         max_length=USERNAME_LEN,
         required=True,
-        validators=(RegexValidator(
-                    regex=r'^[-a-zA-Z0-9_]+$',
-                    message='Username может содержать только латинские '
-                            'буквы, цифры, дефисы и знаки подчеркивания.'
-                    ),)
     )
 
-    def validate_username(self, value):
-        if not value:
-            raise NotFound()
-        if value == 'me':
-            raise ValidationError('Имя пользователя "me" не допустимо.')
-        return value
+    class Meta:
+        fields = ('email', 'username')
 
     def validate(self, attrs):
-        if self.Meta.model.objects.filter(
+        if User.objects.filter(**attrs):
+            return attrs
+        if User.objects.filter(
             username=attrs.get('username')
-        ).exists() != self.Meta.model.objects.filter(
+        ).exists() or User.objects.filter(
             email=attrs.get('email')
         ).exists():
             raise ValidationError('Данные не валидны')
         return attrs
 
     def create(self, validated_data):
-        instance, _ = self.Meta.model.objects.get_or_create(**validated_data)
+        instance, _ = User.objects.get_or_create(**validated_data)
         confirmation_code = self.generate_confirmation_code()
         instance.confirmation_code = confirmation_code
         instance.save()
@@ -98,10 +90,6 @@ class UserCreateSerializer(serializers.ModelSerializer):
         from_email = None
         recipient_list = (email,)
         send_mail(subject, message, from_email, recipient_list)
-
-    class Meta:
-        model = User
-        fields = ('email', 'username')
 
 
 class UserCreatAdvancedSerializer(serializers.ModelSerializer):

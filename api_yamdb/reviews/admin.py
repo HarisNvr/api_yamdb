@@ -31,16 +31,21 @@ class GenreAdmin(admin.ModelAdmin):
 @admin.register(Title)
 class TitleAdmin(admin.ModelAdmin):
     list_display = (
-        'name', 'description', 'year', 'category', 'calculate_rating',
+        'name', 'description', 'year', 'category', 'calculate_rating', 'genres_display',
     )
     list_display_links = ('name', 'description', 'year', 'category')
     list_filter = ('category', 'genre')
     search_fields = ('name', 'year')
 
+    def genres_display(self, obj):
+        return ', '.join(genre.name for genre in obj.genre.all())
+
+    genres_display.short_description = 'Genres'
+
     def calculate_rating(self, obj):
         return obj.rating
 
-    calculate_rating.short_description = 'Rating'
+    calculate_rating.short_description = 'Средний рэйтиг'
 
     def get_queryset(self, request):
         queryset = super().get_queryset(request)
