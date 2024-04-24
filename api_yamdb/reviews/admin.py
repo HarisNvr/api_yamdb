@@ -41,12 +41,12 @@ class TitleAdmin(admin.ModelAdmin):
     def genres_display(self, obj):
         return ', '.join(genre.name for genre in obj.genre.all())
 
-    genres_display.short_description = 'Genres'
+    genres_display.short_description = 'Жанры'
 
     def calculate_rating(self, obj):
         return obj.rating
 
-    calculate_rating.short_description = 'Средний рэйтиг'
+    calculate_rating.short_description = 'Средний рейтинг'
 
     def get_queryset(self, request):
         queryset = super().get_queryset(request)
