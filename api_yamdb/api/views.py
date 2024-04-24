@@ -50,8 +50,9 @@ class TitleViewSet(viewsets.ModelViewSet):
     pagination_class = LimitOffsetPagination
     permission_classes = (IsAdminOrReadOnly,)
     http_method_names = ALLOWED_METHODS
-    filter_backends = [DjangoFilterBackend]
+    filter_backends = (DjangoFilterBackend, filters.OrderingFilter)
     filterset_class = TitleFilter
+    ordering_fields = ('name', 'year', 'category', 'genre')
 
 
 class CategoryViewSet(CategoryGenreViewSet):
@@ -78,11 +79,6 @@ class ReviewViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         title = self.get_title()
-        if title.reviews.filter(author=self.request.user).exists():
-            raise ValidationError(
-                'Вы уже оставили отзыв на это произведение.',
-                code=400
-            )
         serializer.save(author=self.request.user, title=title)
 
 
@@ -91,8 +87,8 @@ class CommentViewSet(viewsets.ModelViewSet):
     permission_classes = (IsAuthorModAdminOrReadOnlyPermission,)
     http_method_names = ALLOWED_METHODS
 
-    def perform_create(self, serializer):
-        review = get_object_or_404(
+    def get_review(self):
+        return get_object_or_404(
             Review,
             id=self.kwargs['review_id'],
             title=get_object_or_404(
@@ -100,13 +96,16 @@ class CommentViewSet(viewsets.ModelViewSet):
                 pk=self.kwargs.get('title_id')
             )
         )
+
+    def perform_create(self, serializer):
+        review = self.get_review()
         serializer.save(
             author=self.request.user,
             review=review
         )
 
     def get_queryset(self):
-        review = Review.objects.get(id=self.kwargs['review_id'])
+        review = self.get_review()
         return review.commentaries.all()
 
 

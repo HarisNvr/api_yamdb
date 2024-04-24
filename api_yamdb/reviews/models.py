@@ -1,4 +1,4 @@
-from datetime import datetime as dt
+from django.utils import timezone
 
 from django.core.validators import (
     MinValueValidator,
@@ -55,7 +55,7 @@ class User(AbstractUser, UsernameValidatorMixin):
         return self.username
 
 
-class CategoryGenre(models.Model):
+class NameSlugBaseModel(models.Model):
     name = models.CharField(
         max_length=MX_CHARS_BIG,
         verbose_name='Название',
@@ -79,16 +79,21 @@ class CategoryGenre(models.Model):
         ) else self.name
 
 
-class Category(CategoryGenre):
+class Category(NameSlugBaseModel):
     class Meta:
         verbose_name = 'категория'
         verbose_name_plural = 'Категории'
 
 
-class Genre(CategoryGenre):
+class Genre(NameSlugBaseModel):
     class Meta:
         verbose_name = 'жанр'
         verbose_name_plural = 'Жанры'
+
+
+def validate_year(value):
+    if value > timezone.now().year:
+        raise ValidationError('Год не может быть больше текущего.')
 
 
 class Title(models.Model):
@@ -98,12 +103,7 @@ class Title(models.Model):
     )
     year = models.SmallIntegerField(
         verbose_name='Год выхода',
-        validators=[
-            MaxValueValidator(
-                dt.now().year,
-                message='Год не может быть больше текущего.'
-            )
-        ]
+        validators=(validate_year,)
     )
     description = models.TextField(
         verbose_name='Описание',
@@ -132,7 +132,7 @@ class Title(models.Model):
         ) else self.name
 
 
-class ReviewComment(models.Model):
+class TextPubDateAuthorBaseModel(models.Model):
     text = models.TextField(verbose_name='Содержание')
     pub_date = models.DateTimeField(auto_now_add=True)
     author = models.ForeignKey(
@@ -151,7 +151,7 @@ class ReviewComment(models.Model):
         ) else self.text
 
 
-class Review(ReviewComment):
+class Review(TextPubDateAuthorBaseModel):
     title = models.ForeignKey(
         Title,
         on_delete=models.CASCADE,
@@ -160,7 +160,7 @@ class Review(ReviewComment):
     )
     score = models.SmallIntegerField(
         verbose_name='Оценка',
-        validators=[
+        validators=(
             MinValueValidator(
                 MIN_REVIEW_SCORE,
                 message=f'Оценка не может быть ниже {MIN_REVIEW_SCORE}'
@@ -169,22 +169,22 @@ class Review(ReviewComment):
                 MAX_REVIEW_SCORE,
                 message=f'Оценка не может быть больше {MAX_REVIEW_SCORE}'
             )
-        ]
+        )
     )
 
     class Meta:
         verbose_name = 'обзор'
         verbose_name_plural = 'Обзоры'
-        constraints = [
+        constraints = (
             models.UniqueConstraint(
                 fields=('title', 'author'),
                 name='unique_title_author'
-            )
-        ]
+            ),
+        )
         ordering = ('-pub_date',)
 
 
-class Comment(ReviewComment):
+class Comment(TextPubDateAuthorBaseModel):
     review = models.ForeignKey(
         Review,
         on_delete=models.CASCADE,
