@@ -15,10 +15,9 @@ router_v1.register(
     basename='comments')
 router_v1.register('categories', CategoryViewSet, basename='categories')
 router_v1.register('genres', GenreViewSet, basename='genres')
-router_v1.register(r'users', UserViewSet)
+router_v1.register('users', UserViewSet, basename='users')
 
 urlpatterns = [
-    path('v1/users/me/', UserViewSet.as_view({'get': 'me', 'patch':'patch_me'}), name='user-me'),
     path('v1/', include(router_v1.urls)),
     path('v1/auth/', include([
         path('token/', TokenObtainView.as_view(), name='token_obtain'),

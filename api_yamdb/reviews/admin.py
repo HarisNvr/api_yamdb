@@ -31,7 +31,8 @@ class GenreAdmin(admin.ModelAdmin):
 @admin.register(Title)
 class TitleAdmin(admin.ModelAdmin):
     list_display = (
-        'name', 'description', 'year', 'category', 'calculate_rating', 'genres_display',
+        'name', 'description', 'year', 'category',
+        'calculate_rating', 'genres_display',
     )
     list_display_links = ('name', 'description', 'year', 'category')
     list_filter = ('category', 'genre')

@@ -1,6 +1,5 @@
-from rest_framework import viewsets, mixins, filters, status
+from rest_framework import viewsets, mixins, filters
 from rest_framework.pagination import LimitOffsetPagination
-from rest_framework.response import Response
 
 from .permission import IsAdminOrReadOnly
 
