@@ -38,8 +38,8 @@ class TokenObtainView(APIView):
     def post(self, request):
         serializer = TokenObtainSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        serializer.save()
-        return Response({'token': str(serializer.data)},
+        token = serializer.save()
+        return Response({'token': str(token)},
                         status=status.HTTP_200_OK)
 
 
